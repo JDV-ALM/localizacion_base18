@@ -41,11 +41,12 @@ class StockPicking(models.Model):
     _inherit = 'stock.picking'
 
     def button_validate(self):
-        super().button_validate()
+        res=super().button_validate()
         for line in self.move_line_ids:
             self.actualiza_costo_usd_stock_layer(line.product_id)
             self.actualiza_costo_usd(line.product_id)
         #self._calculate_average_cost_usd()
+        return res
 
     def _calculate_average_cost_usd(self):
 
