@@ -51,9 +51,7 @@
                     </tr>
                     <tr>
                       <td>&amp;nbsp;&amp;nbsp;</td>
-                      <td >&amp;nbsp;&amp;nbsp;Fecha:<span t-field="docs.invoice_date"/>
-                      &amp;nbsp;&amp;nbsp;Hora:<span t-field="docs.hora_public"/>
-                      </td>
+                      <td >&amp;nbsp;&amp;nbsp;Fecha:<span t-field="docs.invoice_date"/></td>
                     </tr>
                 </table>
                   

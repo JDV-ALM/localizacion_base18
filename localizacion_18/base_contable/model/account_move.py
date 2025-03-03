@@ -74,6 +74,7 @@ class AccountMove(models.Model):
     igtf_ids=fields.One2many('account.payment.fact','move_id', string='Cobros IGTF')
     amount_total_aux = fields.Float(compute='_compute_total_aux')
     observacion = fields.Char()
+    fact_afect = fields.Char()
 
     #show_update_fpos = fields.Boolean(string="Has Fiscal Position Changed", store=False)  
 
@@ -84,11 +85,11 @@ class AccountMove(models.Model):
             if det.tax_ids.aliquot!='exempt':
                 total_imponible=total_imponible+det.price_subtotal
         self.amount_base_imponible=total_imponible
-
+#aqui
     def _compute_exemto(self):
         total_exento=0
         for det in self.invoice_line_ids:
-            if det.tax_ids.aliquot=='exempt':
+            if det.tax_ids.aliquot=='exempt' and det.linea_exenta!=True:
                 total_exento=total_exento+det.price_subtotal
         self.amount_exento=total_exento
 
@@ -333,15 +334,17 @@ class AccountMove(models.Model):
 
     def button_draft(self):
         super().button_draft()
-        if self.env.user.llevar_borra_fact=='no' or not self.env.user.llevar_borra_fact:
+
+        if self.env.user.x_llevar_borra_fact=='no' or not self.env.user.x_llevar_borra_fact:
             raise UserError(_('Su Usuario no puede llevar esta factura a borrador'))
-        if self.env.user.llevar_borra_fact=='si':
+        if self.env.user.x_llevar_borra_fact=='si':
             if self.igtf_ids:
                 for det in self.igtf_ids.search([('move_id','=',self.id)]):
                     if det.payment_id.state!='draft':
                         det.payment_id.action_draft()
                     det.payment_id.with_context(force_delete=True).unlink()
             busca=self.invoice_line_ids.search([('linea_exenta','=',True),('move_id','=',self.id)])
+            #raise UserError(_('HHHH %s')%busca)
             if busca:
                 busca.unlink()
 
