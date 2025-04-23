@@ -89,6 +89,7 @@ class RetentionVat(models.Model):
             'move_type':'entry',
             'currency_id':self.currency_id.id,
             'posted_before':False,
+            'partner_id':self.partner_id.id,
             'ref':"Comprobante de retencion iva de la factura nro "+self.invoice_id.invoice_number_next if self.invoice_id.invoice_number_next else self.invoice_number_next,
             })
         move_id=self.env['account.move'].create(vals)
@@ -99,6 +100,7 @@ class RetentionVat(models.Model):
             'move_id':move_id.id,
             'balance':-1*self.vat_retentioned,
             'journal_id':self.journal_id.id,
+            'partner_id':self.partner_id.id,
             })
         move_id.line_ids.create(valores)
         valores2=({
@@ -108,6 +110,7 @@ class RetentionVat(models.Model):
             'move_id':move_id.id,
             'balance':self.vat_retentioned,
             'journal_id':self.journal_id.id,
+            'partner_id':self.partner_id.id,
             })
         move_id.line_ids.create(valores2)
         move_id._post(soft=False)

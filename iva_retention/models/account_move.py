@@ -13,14 +13,35 @@ class AccountMove(models.Model):
 
     vat_ret_id = fields.Many2one('vat.retention', string='Retención IVA', readonly="True", copy=False, help='Voucher Retencion IVA')
     vat_ret_aux_id = fields.Char(copy=False)
+    contacto_id = fields.Many2one('res.partner', compute='_compute_contacto',string="Contacto")
+
+    def _compute_contacto(self):
+    	if self.partner_id:
+    		self.contacto_id=self.partner_id.id
+    	else:
+    		self.contacto_id=False
 
 
     def action_post(self):
-        super().action_post()
-        self.action_create_vat_retention()
+        result=super().action_post()
+        self.valida_vat_retention()
+        return result
+
+
+
+    def valida_vat_retention(self):
+        if self.move_type in ('in_invoice','in_refund','in_receipt'):
+            # proveedor
+            if self.company_id.aplicar_ret==True:
+                self.action_create_vat_retention()
+        if self.move_type in ('out_invoice','out_refund','out_receipt'):
+            # cliente
+            if self.partner_id.contribuyente=='si':
+                self.action_create_vat_retention()
+
 
     def action_create_vat_retention(self):
-        if self.partner_id.contribuyente=='si' and self.hay_aliquot()==True:
+        if self.hay_aliquot()==True:
             factor=1
             if self.currency_id.id!=self.company_id.currency_id.id:
                 factor=self.tasa
@@ -40,6 +61,14 @@ class AccountMove(models.Model):
             if self.vat_ret_aux_id:
                 id_vat.name=self.vat_ret_aux_id
 
+            if self.move_type in ('in_invoice','in_refund','in_receipt'):
+                # proveedor
+                retention_rate=self.partner_id.vat_retention_rate
+            if self.move_type in ('out_invoice','out_refund','out_receipt'):
+                # cliente
+                retention_rate=self.env.company.vat_retention_rate_cli
+            #raise UserError(_("retention_rate %s")%retention_rate)
+
             for line_move in self.invoice_line_ids:
                 tax_id=''
                 amount_imp=amount_base_impo=0
@@ -55,7 +84,7 @@ class AccountMove(models.Model):
                         vals2=({
                             'invoice_number':self.invoice_number_next,
                             'amount_vat_ret':amount_imp*factor,
-                            'retention_rate':self.partner_id.vat_retention_rate,
+                            'retention_rate':retention_rate,
                             'retention_id':id_vat.id,
                             'invoice_id':self.id,
                             'tax_id':tax_id if tax_id else '',

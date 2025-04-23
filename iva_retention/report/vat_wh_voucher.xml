@@ -24,6 +24,8 @@
                                                 </p>
                                                 <p style="font-size:8px;text-align:center;">
                                                     LEY IVA – ART. 11: “SERAN RESPONSABLES DEL PAGO DE IMPUESTO EN CALIDAD DE AGENTES DE RETENCION, LOS COMPRADORES O ADQUIRIENTES DE DETERMINADOS BIENES MUEBLES Y LOS RECEPTORES DE CIERTOS SERVICIOS A QUIENES LA ADMINISTRACION TRIBUTARIA DESIGNE COMO TAL”
+                                                    <br/>
+                                                    "ESTE COMPROBANTE SE EMITE EN FUNCIÓN A LO ESTABLECIDO EN EL ARTICULO 16 DE LA PROVIDENCIA ADMINISTRATIVA SNAT/2014/0049 DEL 10/08/2015"
                                                 </p>
                                             </td>
                                             </tr>
@@ -284,14 +286,20 @@
                             </style>
                             <div class="row">
                             	<t t-if="o.type in ('in_invoice','in_refund','in_receipt')"  > 
-                                <table class="table table-borderless" style="width:100%;margin-top:50px;" name="firmas">
+                            	<table class="table table-borderless" style="width:100%;margin-top:50px;" name="firmas">
+                                <!--table style="width:100%;margin-top:50px;" name="firmas"-->
                                     <tr>
                                         <td style="width:50%;text-align:center;padding:0px;margin:0px;">
+                                        	<div style="position: absolute; left: 240px; top: 435px; z-index: 1;">
+                                                <t t-if="o.create_uid.sign_signature"> 
+                                                  <img t-attf-src="data:image/*;base64,{{o.create_uid.sign_signature}}" style="width:auto; height:100px;"/>
+                                                </t>
+                                            </div>
                                             <br/>
                                             <div class="row justify-content-center">
-                                                <div class="border-bottom border-dark border-1" style="max-width: 300px;"/>
+                                                <div class="border-bottom border-dark border-1" style="max-width: 450px;"/>
                                             </div>
-                                            <b><span t-esc="o.retention_line_ids.create_uid.partner_id.name"/></b>
+                                            <b><span t-esc="o.create_uid.partner_id.name"/></b>
                                             <br/>
                                             <b><span t-esc="o.company_id.name"/></b>
                                             <br/>
@@ -300,7 +308,7 @@
                                         <td style="width:50%;text-align:center;padding:0px;margin:0px;">
                                             <br/>
                                             <div class="row justify-content-center">
-                                                <div class="border-bottom border-dark border-1" style="max-width: 300px;"/>
+                                                <div class="border-bottom border-dark border-1" style="max-width: 450px;"/>
                                             </div>                                           
                                                 <b><span t-esc="o.partner_id.name"/></b>
                                             <br/>
