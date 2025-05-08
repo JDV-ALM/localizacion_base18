@@ -268,6 +268,7 @@ class RetentionVat(models.Model):
         value['price_unit'] = balances
         value['price_subtotal'] = balances
         value['price_total'] = balances
+        value['partner_id'] = self.partner_id.id
 
         move_line_id2 = move_line_obj.create(value)
     

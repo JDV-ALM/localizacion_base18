@@ -283,7 +283,7 @@ class libro_ventas(models.TransientModel):
             'state_retantion': det.vat_ret_id.state,
             'state': det.invoice_id.state,
             'currency_id':det.invoice_id.currency_id.id,
-            'ref':det.invoice_id.ref,
+            'ref':det.invoice_id.fact_afect,
             'total_exento':self.conv_div_nac(det.base_exenta,det),
             'alicuota_reducida':self.conv_div_nac(det.impuesto_reducida,det),
             'alicuota_general':self.conv_div_nac(det.impuesto_general,det),

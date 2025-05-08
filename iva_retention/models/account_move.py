@@ -30,14 +30,15 @@ class AccountMove(models.Model):
 
 
     def valida_vat_retention(self):
-        if self.move_type in ('in_invoice','in_refund','in_receipt'):
-            # proveedor
-            if self.company_id.aplicar_ret==True:
-                self.action_create_vat_retention()
-        if self.move_type in ('out_invoice','out_refund','out_receipt'):
-            # cliente
-            if self.partner_id.contribuyente=='si':
-                self.action_create_vat_retention()
+        for selff in self:
+            if selff.move_type in ('in_invoice','in_refund','in_receipt'):
+                # proveedor
+                if selff.company_id.aplicar_ret==True:
+                    selff.action_create_vat_retention()
+            if selff.move_type in ('out_invoice','out_refund','out_receipt'):
+                # cliente
+                if selff.partner_id.contribuyente=='si':
+                    selff.action_create_vat_retention()
 
 
     def action_create_vat_retention(self):
