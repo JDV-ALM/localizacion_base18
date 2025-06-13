@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Purchase Order Form View -->
+    <record id="view_purchase_order_form_venezuelan" model="ir.ui.view">
+        <field name="name">purchase.order.form.venezuelan</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan fields after partner_ref -->
+            <xpath expr="//field[@name='partner_ref']" position="after">
+                <field name="supplier_invoice_number"/>
+                <field name="supplier_control_number"/>
+            </xpath>
+            
+            <!-- Add Venezuelan tab -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Información Venezolana" name="venezuelan_info">
+                    <group>
+                        <group string="Información de Importación">
+                            <field name="is_import_purchase"/>
+                            <field name="import_permit_number" attrs="{'invisible': [('is_import_purchase', '=', False)]}"/>
+                            <field name="customs_document" attrs="{'invisible': [('is_import_purchase', '=', False)]}"/>
+                        </group>
+                        
+                        <group string="Retenciones">
+                            <field name="apply_wh_vat" readonly="1"/>
+                            <field name="wh_vat_rate" attrs="{'invisible': [('apply_wh_vat', '=', False)]}"/>
+                            <field name="wh_vat_amount" attrs="{'invisible': [('apply_wh_vat', '=', False)]}" widget="monetary"/>
+                            
+                            <field name="apply_wh_islr" readonly="1"/>
+                            <field name="wh_islr_rate" attrs="{'invisible': [('apply_wh_islr', '=', False)]}"/>
+                            <field name="wh_islr_amount" attrs="{'invisible': [('apply_wh_islr', '=', False)]}" widget="monetary"/>
+                            
+                            <field name="apply_wh_municipal" readonly="1"/>
+                            <field name="wh_municipal_rate" attrs="{'invisible': [('apply_wh_municipal', '=', False)]}"/>
+                            <field name="wh_municipal_amount" attrs="{'invisible': [('apply_wh_municipal', '=', False)]}" widget="monetary"/>
+                        </group>
+                        
+                        <group string="Moneda">
+                            <field name="currency_rate_purchase"/>
+                            <field name="amount_total_ves" widget="monetary"/>
+                        </group>
+                        
+                        <group string="Total con Retenciones">
+                            <field name="amount_total_with_wh" widget="monetary" class="oe_subtotal_footer_separator"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            
+            <!-- Add Venezuelan fields to purchase lines -->
+            <xpath expr="//field[@name='order_line']/tree/field[@name='taxes_id']" position="after">
+                <field name="seniat_code" optional="hide"/>
+                <field name="import_unit_cost" optional="hide"/>
+                <field name="import_currency_id" optional="hide"/>
+                <field name="tax_exempt_reason" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Purchase Order Tree View -->
+    <record id="view_purchase_order_tree_venezuelan" model="ir.ui.view">
+        <field name="name">purchase.order.tree.venezuelan</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_tree"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan columns -->
+            <xpath expr="//field[@name='amount_total']" position="after">
+                <field name="wh_vat_amount" optional="hide" sum="Total Ret. IVA"/>
+                <field name="wh_islr_amount" optional="hide" sum="Total Ret. ISLR"/>
+                <field name="amount_total_with_wh" optional="hide" sum="Total con Retenciones"/>
+                <field name="is_import_purchase" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Purchase Order Search View -->
+    <record id="view_purchase_order_filter_venezuelan" model="ir.ui.view">
+        <field name="name">purchase.order.select.venezuelan</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_filter"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan filters -->
+            <xpath expr="//filter[@name='exception']" position="after">
+                <separator/>
+                <filter string="Compras de Importación" name="import_purchases" domain="[('is_import_purchase', '=', True)]"/>
+                <filter string="Con Retención IVA" name="with_wh_vat" domain="[('apply_wh_vat', '=', True)]"/>
+                <filter string="Con Retención ISLR" name="with_wh_islr" domain="[('apply_wh_islr', '=', True)]"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+</odoo>

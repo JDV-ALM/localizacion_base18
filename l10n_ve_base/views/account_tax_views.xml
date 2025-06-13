@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Account Tax Form View -->
+    <record id="view_tax_form_venezuelan" model="ir.ui.view">
+        <field name="name">account.tax.form.venezuelan</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_tax_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan tax type after name -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="tax_type_ve"/>
+                <field name="seniat_code"/>
+            </xpath>
+            
+            <!-- Add Venezuelan tax configuration -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Configuración Venezolana" name="venezuelan_config">
+                    <group>
+                        <group string="Tipo de Impuesto">
+                            <field name="is_withholding"/>
+                            <field name="withholding_type" attrs="{'invisible': [('is_withholding', '=', False)]}"/>
+                            <field name="withholding_rate" attrs="{'invisible': [('is_withholding', '=', False)]}"/>
+                            <field name="is_igtf"/>
+                        </group>
+                        
+                        <group string="Configuración Especial">
+                            <field name="minimum_amount"/>
+                            <field name="exempt_national"/>
+                            <field name="exempt_state"/>
+                            <field name="exempt_municipal"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Account Tax Tree View -->
+    <record id="view_tax_tree_venezuelan" model="ir.ui.view">
+        <field name="name">account.tax.tree.venezuelan</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_tax_tree"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan columns -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="tax_type_ve" optional="show"/>
+                <field name="seniat_code" optional="hide"/>
+                <field name="is_withholding" optional="hide"/>
+                <field name="is_igtf" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Account Tax Search View -->
+    <record id="view_account_tax_search_venezuelan" model="ir.ui.view">
+        <field name="name">account.tax.search.venezuelan</field>
+        <field name="model">account.tax</field>
+        <field name="inherit_id" ref="account.view_account_tax_search"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan search fields -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="seniat_code" string="Código SENIAT"/>
+            </xpath>
+            
+            <!-- Add Venezuelan filters -->
+            <xpath expr="//filter[@name='sale']" position="after">
+                <separator/>
+                <filter string="IVA" name="vat_taxes" domain="[('tax_type_ve', '=', 'vat')]"/>
+                <filter string="ISLR" name="islr_taxes" domain="[('tax_type_ve', '=', 'islr')]"/>
+                <filter string="Municipal" name="municipal_taxes" domain="[('tax_type_ve', '=', 'municipal')]"/>
+                <filter string="IGTF" name="igtf_taxes" domain="[('tax_type_ve', '=', 'igtf')]"/>
+                <separator/>
+                <filter string="Retenciones" name="withholding_taxes" domain="[('is_withholding', '=', True)]"/>
+                <filter string="IGTF" name="igtf_filter" domain="[('is_igtf', '=', True)]"/>
+            </xpath>
+            
+            <!-- Add Venezuelan group by -->
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter string="Tipo Venezolano" name="group_tax_type_ve" domain="[]" context="{'group_by': 'tax_type_ve'}"/>
+                <filter string="Es Retención" name="group_withholding" domain="[]" context="{'group_by': 'is_withholding'}"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Menu for Tax Configuration -->
+    <menuitem id="menu_venezuelan_tax_config" 
+              name="Configuración Impuestos VE" 
+              parent="account.menu_account_config" 
+              sequence="50"/>
+    
+    <!-- Action to create Venezuelan default taxes -->
+    <record id="action_create_venezuelan_taxes" model="ir.actions.server">
+        <field name="name">Crear Impuestos Venezolanos por Defecto</field>
+        <field name="model_id" ref="account.model_account_tax"/>
+        <field name="state">code</field>
+        <field name="code">
+company = env.company
+if company:
+    created_taxes = env['account.tax'].create_venezuelan_default_taxes(company)
+    if created_taxes:
+        action = {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Impuestos Creados',
+                'message': f'Se crearon {len(created_taxes)} impuestos venezolanos por defecto.',
+                'type': 'success',
+            }
+        }
+    else:
+        action = {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification', 
+            'params': {
+                'title': 'Sin Cambios',
+                'message': 'Los impuestos ya existen en el sistema.',
+                'type': 'info',
+            }
+        }
+        </field>
+    </record>
+    
+    <menuitem id="menu_create_venezuelan_taxes"
+              name="Crear Impuestos por Defecto"
+              parent="menu_venezuelan_tax_config"
+              action="action_create_venezuelan_taxes"
+              sequence="10"/>
+    
+</odoo>

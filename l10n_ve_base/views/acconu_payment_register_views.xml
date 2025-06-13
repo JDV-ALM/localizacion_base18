@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Account Payment Register Form View -->
+    <record id="view_account_payment_register_form_venezuelan" model="ir.ui.view">
+        <field name="name">account.payment.register.form.venezuelan</field>
+        <field name="model">account.payment.register</field>
+        <field name="inherit_id" ref="account.view_account_payment_register_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan payment method after journal -->
+            <xpath expr="//field[@name='journal_id']" position="after">
+                <field name="payment_method_ve" options="{'no_create': True}"/>
+            </xpath>
+            
+            <!-- Add Venezuelan information -->
+            <xpath expr="//group[@name='group_payment']" position="after">
+                <group string="Información Venezolana" name="venezuelan_info">
+                    <group>
+                        <field name="applies_igtf" readonly="1"/>
+                        <field name="igtf_rate" attrs="{'invisible': [('applies_igtf', '=', False)]}"/>
+                        <field name="igtf_amount" attrs="{'invisible': [('applies_igtf', '=', False)]}" widget="monetary"/>
+                    </group>
+                    
+                    <group>
+                        <field name="payment_reference_ve" placeholder="Referencia del pago"/>
+                        <field name="bank_account_origin" placeholder="Cuenta origen"/>
+                        <field name="bank_account_destination" placeholder="Cuenta destino"/>
+                    </group>
+                </group>
+                
+                <group string="Retenciones" name="withholdings_group">
+                    <group>
+                        <field name="wh_vat_amount" widget="monetary"/>
+                        <field name="wh_islr_amount" widget="monetary"/>
+                        <field name="wh_municipal_amount" widget="monetary"/>
+                    </group>
+                </group>
+                
+                <group string="Moneda Extranjera" name="foreign_currency_group">
+                    <group>
+                        <field name="foreign_currency_id" options="{'no_create': True}"/>
+                        <field name="foreign_amount" widget="monetary" options="{'currency_field': 'foreign_currency_id'}"/>
+                        <field name="exchange_rate_used"/>
+                    </group>
+                </group>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Account Payment Form View -->
+    <record id="view_account_payment_form_venezuelan" model="ir.ui.view">
+        <field name="name">account.payment.form.venezuelan</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan payment method -->
+            <xpath expr="//field[@name='journal_id']" position="after">
+                <field name="payment_method_ve" options="{'no_create': True}"/>
+            </xpath>
+            
+            <!-- Add Venezuelan tab -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Información Venezolana" name="venezuelan_info">
+                    <group>
+                        <group string="IGTF">
+                            <field name="applies_igtf"/>
+                            <field name="igtf_rate" attrs="{'invisible': [('applies_igtf', '=', False)]}"/>
+                            <field name="igtf_amount" attrs="{'invisible': [('applies_igtf', '=', False)]}" widget="monetary"/>
+                        </group>
+                        
+                        <group string="Retenciones">
+                            <field name="wh_vat_amount" widget="monetary"/>
+                            <field name="wh_islr_amount" widget="monetary"/>
+                            <field name="wh_municipal_amount" widget="monetary"/>
+                        </group>
+                        
+                        <group string="Información Bancaria">
+                            <field name="payment_reference_ve"/>
+                            <field name="bank_account_origin"/>
+                            <field name="bank_account_destination"/>
+                        </group>
+                        
+                        <group string="Moneda Extranjera">
+                            <field name="foreign_currency_id" options="{'no_create': True}"/>
+                            <field name="foreign_amount" widget="monetary" options="{'currency_field': 'foreign_currency_id'}"/>
+                            <field name="exchange_rate_used"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Account Payment Tree View -->
+    <record id="view_account_payment_tree_venezuelan" model="ir.ui.view">
+        <field name="name">account.payment.tree.venezuelan</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_tree"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan columns -->
+            <xpath expr="//field[@name='amount']" position="after">
+                <field name="payment_method_ve" optional="show"/>
+                <field name="igtf_amount" optional="hide" sum="Total IGTF"/>
+                <field name="applies_igtf" optional="hide"/>
+                <field name="foreign_amount" optional="hide"/>
+                <field name="exchange_rate_used" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Account Payment Search View -->
+    <record id="view_account_payment_search_venezuelan" model="ir.ui.view">
+        <field name="name">account.payment.search.venezuelan</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_search"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan search fields -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="payment_reference_ve" string="Referencia VE"/>
+            </xpath>
+            
+            <!-- Add Venezuelan filters -->
+            <xpath expr="//filter[@name='outbound_filter']" position="after">
+                <separator/>
+                <filter string="Con IGTF" name="with_igtf" domain="[('applies_igtf', '=', True)]"/>
+                <filter string="Con Retenciones" name="with_withholdings" domain="['|', '|', ('wh_vat_amount', '>', 0), ('wh_islr_amount', '>', 0), ('wh_municipal_amount', '>', 0)]"/>
+                <filter string="Moneda Extranjera" name="foreign_currency" domain="[('foreign_currency_id', '!=', False)]"/>
+            </xpath>
+            
+            <!-- Add Venezuelan group by -->
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter string="Método de Pago VE" name="group_payment_method_ve" domain="[]" context="{'group_by': 'payment_method_ve'}"/>
+                <filter string="Aplica IGTF" name="group_igtf" domain="[]" context="{'group_by': 'applies_igtf'}"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+</odoo>

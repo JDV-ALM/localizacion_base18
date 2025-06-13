@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Report IGTF Wizard Form View -->
+    <record id="view_report_igtf_wizard_form" model="ir.ui.view">
+        <field name="name">report.igtf.wizard.form</field>
+        <field name="model">report.igtf.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Reporte IGTF">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <label for="report_type" string="Reporte IGTF"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group string="Parámetros del Reporte">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="company_id" options="{'no_create': True}" groups="base.group_multi_company"/>
+                            <field name="report_type"/>
+                        </group>
+                        
+                        <group string="Formato de Exportación">
+                            <field name="export_format" widget="radio"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="Filtros" name="filters">
+                            <group>
+                                <group string="Por Cliente/Proveedor">
+                                    <field name="partner_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                                </group>
+                                
+                                <group string="Por Diarios">
+                                    <field name="journal_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                                </group>
+                                
+                                <group string="Por Métodos de Pago">
+                                    <field name="payment_method_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Resultado" name="result" attrs="{'invisible': [('report_data', '=', False)]}">
+                            <group>
+                                <field name="report_data" readonly="1" widget="text"/>
+                            </group>
+                            
+                            <group attrs="{'invisible': [('report_file', '=', False)]}">
+                                <field name="report_file" filename="report_filename" readonly="1"/>
+                                <field name="report_filename" invisible="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                
+                <footer>
+                    <button string="Generar Reporte" name="action_generate_report" type="object" class="btn-primary"/>
+                    <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+</odoo>

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Partner Form View -->
+    <record id="view_partner_form_venezuelan" model="ir.ui.view">
+        <field name="name">res.partner.form.venezuelan</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan identification fields -->
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="rif" placeholder="Ej: J-12345678-9"/>
+                <field name="cedula" placeholder="Ej: V-12345678" attrs="{'invisible': [('is_company', '=', True)]}"/>
+                <field name="partner_type_ve"/>
+            </xpath>
+            
+            <!-- Add Venezuelan tax information -->
+            <xpath expr="//page[@name='accounting']" position="inside">
+                <group string="Información Fiscal Venezolana" name="venezuelan_fiscal">
+                    <group>
+                        <field name="contribuyente_especial"/>
+                        <field name="seniat_updated"/>
+                    </group>
+                </group>
+                
+                <group string="Configuración de Retenciones" name="withholdings_config">
+                    <group string="Retención IVA">
+                        <field name="wh_iva_agent"/>
+                        <field name="wh_iva_rate" attrs="{'invisible': [('wh_iva_agent', '=', False)]}"/>
+                    </group>
+                    
+                    <group string="Retención ISLR">
+                        <field name="wh_islr_agent"/>
+                        <field name="wh_islr_rate" attrs="{'invisible': [('wh_islr_agent', '=', False)]}"/>
+                    </group>
+                    
+                    <group string="Retención Municipal">
+                        <field name="wh_municipal_agent"/>
+                        <field name="wh_municipal_rate" attrs="{'invisible': [('wh_municipal_agent', '=', False)]}"/>
+                    </group>
+                </group>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Partner Tree View -->
+    <record id="view_partner_tree_venezuelan" model="ir.ui.view">
+        <field name="name">res.partner.tree.venezuelan</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan columns -->
+            <xpath expr="//field[@name='display_name']" position="after">
+                <field name="rif" optional="show"/>
+                <field name="partner_type_ve" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Partner Search View -->
+    <record id="view_res_partner_filter_venezuelan" model="ir.ui.view">
+        <field name="name">res.partner.select.venezuelan</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan search fields -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="rif" string="RIF/Cédula" filter_domain="['|', ('rif', 'ilike', self), ('cedula', 'ilike', self)]"/>
+            </xpath>
+            
+            <!-- Add Venezuelan filters -->
+            <xpath expr="//filter[@name='supplier']" position="after">
+                <separator/>
+                <filter string="Agente Retención IVA" name="wh_iva_agent" domain="[('wh_iva_agent', '=', True)]"/>
+                <filter string="Agente Retención ISLR" name="wh_islr_agent" domain="[('wh_islr_agent', '=', True)]"/>
+                <filter string="Contribuyente Especial" name="contribuyente_especial" domain="[('contribuyente_especial', '=', True)]"/>
+            </xpath>
+            
+            <!-- Add Venezuelan group by -->
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter string="Tipo de Persona" name="group_partner_type_ve" domain="[]" context="{'group_by': 'partner_type_ve'}"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Partner Kanban View -->
+    <record id="res_partner_kanban_view_venezuelan" model="ir.ui.view">
+        <field name="name">res.partner.kanban.venezuelan</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.res_partner_kanban_view"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add RIF to kanban card -->
+            <xpath expr="//div[@class='oe_kanban_details']//field[@name='email']" position="after">
+                <div t-if="record.rif.raw_value">
+                    <i class="fa fa-id-card-o" role="img" aria-label="RIF" title="RIF"></i>
+                    <field name="rif"/>
+                </div>
+            </xpath>
+            
+        </field>
+    </record>
+    
+</odoo>

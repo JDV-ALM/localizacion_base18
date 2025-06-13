@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Company Form View -->
+    <record id="view_company_form_venezuelan" model="ir.ui.view">
+        <field name="name">res.company.form.venezuelan</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan identification fields -->
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="rif" placeholder="Ej: J-12345678-9"/>
+                <field name="nit" placeholder="Número de Identificación Tributaria"/>
+            </xpath>
+            
+            <!-- Add Venezuelan configuration tab -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Configuración Venezolana" name="venezuelan_config">
+                    <group>
+                        <group string="Agentes de Retención">
+                            <field name="wh_agent"/>
+                            <field name="wh_vat_agent"/>
+                            <field name="wh_income_agent"/>
+                            <field name="wh_municipal_agent"/>
+                        </group>
+                        
+                        <group string="Configuración IGTF">
+                            <field name="igtf_tax_id" domain="[('is_igtf', '=', True)]"/>
+                        </group>
+                        
+                        <group string="Enlaces SENIAT">
+                            <field name="seniat_url" widget="url"/>
+                        </group>
+                        
+                        <group string="Cuentas Contables de Retenciones">
+                            <field name="account_wh_vat_id" domain="[('account_type', '=', 'liability_current')]" attrs="{'invisible': [('wh_vat_agent', '=', False)]}"/>
+                            <field name="account_wh_islr_id" domain="[('account_type', '=', 'liability_current')]" attrs="{'invisible': [('wh_income_agent', '=', False)]}"/>
+                            <field name="account_wh_municipal_id" domain="[('account_type', '=', 'liability_current')]" attrs="{'invisible': [('wh_municipal_agent', '=', False)]}"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Company Tree View -->
+    <record id="view_company_tree_venezuelan" model="ir.ui.view">
+        <field name="name">res.company.tree.venezuelan</field>
+        <field name="model">res.company</field>
+        <field name="inherit_id" ref="base.view_company_tree"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan columns -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="rif" optional="show"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+</odoo>

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Pago Wizard Form View -->
+    <record id="view_pago_wizard_form" model="ir.ui.view">
+        <field name="name">pago.wizard.form</field>
+        <field name="model">pago.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Asistente de Pago Venezolano">
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="payment_type" widget="radio" options="{'horizontal': true}"/>
+                        </h1>
+                    </div>
+                    
+                    <group>
+                        <group string="Información Básica">
+                            <field name="partner_id" options="{'no_create': True}"/>
+                            <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                            <field name="currency_id" options="{'no_create': True}"/>
+                            <field name="date"/>
+                        </group>
+                        
+                        <group string="Método de Pago">
+                            <field name="payment_method_ve" options="{'no_create': True}" required="1"/>
+                            <field name="journal_id" domain="[('type', 'in', ['bank', 'cash'])]" options="{'no_create': True}"/>
+                            <field name="communication" placeholder="Concepto del pago"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="IGTF" name="igtf_info" attrs="{'invisible': [('applies_igtf', '=', False)]}">
+                            <group>
+                                <group>
+                                    <field name="applies_igtf" readonly="1"/>
+                                    <field name="igtf_rate"/>
+                                    <field name="igtf_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                </group>
+                                <group>
+                                    <field name="total_amount" readonly="1" widget="monetary" options="{'currency_field': 'currency_id'}" class="oe_subtotal_footer_separator"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Retenciones" name="withholdings">
+                            <group>
+                                <group string="Retención IVA">
+                                    <field name="wh_vat_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                </group>
+                                <group string="Retención ISLR">
+                                    <field name="wh_islr_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                </group>
+                                <group string="Retención Municipal">
+                                    <field name="wh_municipal_amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Información Bancaria" name="bank_info">
+                            <group>
+                                <group>
+                                    <field name="bank_reference" placeholder="Número de referencia"/>
+                                    <field name="account_origin" placeholder="Cuenta origen"/>
+                                    <field name="account_destination" placeholder="Cuenta destino"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <page string="Moneda Extranjera" name="foreign_currency">
+                            <group>
+                                <group>
+                                    <field name="foreign_currency_id" options="{'no_create': True}"/>
+                                    <field name="foreign_amount" widget="monetary" options="{'currency_field': 'foreign_currency_id'}"/>
+                                    <field name="exchange_rate"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                
+                <footer>
+                    <button string="Crear Pago" name="action_create_payment" type="object" class="btn-primary"/>
+                    <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+    
+    <!-- Pago Wizard Action -->
+    <record id="action_pago_wizard" model="ir.actions.act_window">
+        <field name="name">Crear Pago Venezolano</field>
+        <field name="res_model">pago.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{}</field>
+    </record>
+    
+    <!-- Menu for Payment Wizard -->
+    <menuitem id="menu_pago_wizard"
+              name="Crear Pago VE"
+              parent="account.menu_finance_payments"
+              action="action_pago_wizard"
+              sequence="1"/>
+    
+</odoo>

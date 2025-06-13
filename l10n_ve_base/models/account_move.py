@@ -1,12 +1,283 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import ValidationError, UserError
+import re
 
-class Account_move(models.Model):
-    _inherit = 'account_move'
+
+class AccountMove(models.Model):
+    _inherit = 'account.move'
+
+    # Venezuelan document fields
+    nro_control = fields.Char(
+        string='N煤mero de Control',
+        help='N煤mero de control de la factura seg煤n normativa venezolana'
+    )
+    tipo_documento = fields.Selection([
+        ('01', 'Factura'),
+        ('02', 'Nota de D茅bito'),
+        ('03', 'Nota de Cr茅dito'),
+        ('04', 'Factura de Exportaci贸n'),
+        ('05', 'Comprobante de Retenci贸n'),
+        ('06', 'Comprobante de No Retenci贸n'),
+    ], string='Tipo de Documento', default='01')
     
+    # Withholding fields
+    wh_vat = fields.Boolean(
+        string='Aplica Retenci贸n IVA',
+        compute='_compute_withholdings',
+        store=True
+    )
+    wh_vat_amount = fields.Monetary(
+        string='Monto Retenci贸n IVA',
+        currency_field='currency_id'
+    )
+    wh_vat_rate = fields.Float(
+        string='Tasa Retenci贸n IVA (%)',
+        default=75.0
+    )
+    
+    wh_islr = fields.Boolean(
+        string='Aplica Retenci贸n ISLR',
+        compute='_compute_withholdings',
+        store=True
+    )
+    wh_islr_amount = fields.Monetary(
+        string='Monto Retenci贸n ISLR',
+        currency_field='currency_id'
+    )
+    wh_islr_rate = fields.Float(
+        string='Tasa Retenci贸n ISLR (%)',
+        default=3.0
+    )
+    
+    wh_municipal = fields.Boolean(
+        string='Aplica Retenci贸n Municipal',
+        compute='_compute_withholdings',
+        store=True
+    )
+    wh_municipal_amount = fields.Monetary(
+        string='Monto Retenci贸n Municipal',
+        currency_field='currency_id'
+    )
+    wh_municipal_rate = fields.Float(
+        string='Tasa Retenci贸n Municipal (%)',
+        default=1.0
+    )
+    
+    # IGTF fields
+    igtf_amount = fields.Monetary(
+        string='Monto IGTF',
+        currency_field='currency_id',
+        help='Impuesto a las Grandes Transacciones Financieras'
+    )
+    igtf_rate = fields.Float(
+        string='Tasa IGTF (%)',
+        default=3.0
+    )
+    applies_igtf = fields.Boolean(
+        string='Aplica IGTF',
+        compute='_compute_applies_igtf',
+        store=True
+    )
+    
+    # Venezuelan currency fields
+    currency_rate_date = fields.Date(
+        string='Fecha Tasa de Cambio',
+        help='Fecha de la tasa de cambio utilizada'
+    )
+    currency_rate_used = fields.Float(
+        string='Tasa de Cambio Utilizada',
+        digits=(12, 6),
+        help='Tasa de cambio utilizada en la transacci贸n'
+    )
+    
+    # Fiscal printing fields
+    fiscal_printer = fields.Boolean(
+        string='Impresora Fiscal',
+        help='Documento generado por impresora fiscal'
+    )
+    fiscal_printer_serial = fields.Char(
+        string='Serial Impresora Fiscal'
+    )
+    
+    @api.depends('partner_id', 'move_type', 'company_id')
+    def _compute_withholdings(self):
+        """Compute if withholdings apply based on partner and company settings"""
+        for move in self:
+            if move.partner_id and move.move_type in ('out_invoice', 'in_invoice'):
+                # Check if company is withholding agent
+                company = move.company_id
+                partner = move.partner_id
+                
+                # IVA withholding
+                move.wh_vat = (
+                    company.wh_vat_agent and 
+                    move.move_type == 'out_invoice' and
+                    move.amount_total >= 10000  # Minimum threshold
+                )
+                
+                # ISLR withholding
+                move.wh_islr = (
+                    company.wh_income_agent and
+                    move.move_type == 'out_invoice' and
+                    move.amount_total >= 3000  # Minimum threshold
+                )
+                
+                # Municipal withholding
+                move.wh_municipal = (
+                    company.wh_municipal_agent and
+                    move.move_type == 'out_invoice' and
+                    move.amount_total >= 1000  # Minimum threshold
+                )
+            else:
+                move.wh_vat = False
+                move.wh_islr = False
+                move.wh_municipal = False
+    
+    @api.depends('journal_id', 'payment_mode')
+    def _compute_applies_igtf(self):
+        """Compute if IGTF applies based on payment method"""
+        for move in self:
+            # IGTF applies to electronic payments
+            move.applies_igtf = (
+                move.journal_id.type == 'bank' and
+                hasattr(move, 'payment_mode') and
+                move.payment_mode in ('electronic', 'transfer')
+            )
+    
+    @api.constrains('nro_control')
+    def _check_nro_control_format(self):
+        """Validate control number format"""
+        for move in self:
+            if move.nro_control:
+                # Venezuelan control number format: 8 digits
+                if not re.match(r'^\d{8}$', move.nro_control):
+                    raise ValidationError(_(
+                        'El n煤mero de control debe tener exactamente 8 d铆gitos'
+                    ))
+    
+    @api.onchange('wh_vat', 'amount_total', 'wh_vat_rate')
+    def _onchange_wh_vat(self):
+        """Calculate IVA withholding amount"""
+        if self.wh_vat and self.amount_total:
+            # Calculate VAT base (excluding VAT)
+            vat_base = self.amount_untaxed
+            # Apply withholding rate to VAT amount
+            vat_amount = self.amount_total - self.amount_untaxed
+            self.wh_vat_amount = vat_amount * (self.wh_vat_rate / 100)
+    
+    @api.onchange('wh_islr', 'amount_untaxed', 'wh_islr_rate')
+    def _onchange_wh_islr(self):
+        """Calculate ISLR withholding amount"""
+        if self.wh_islr and self.amount_untaxed:
+            self.wh_islr_amount = self.amount_untaxed * (self.wh_islr_rate / 100)
+    
+    @api.onchange('wh_municipal', 'amount_untaxed', 'wh_municipal_rate')
+    def _onchange_wh_municipal(self):
+        """Calculate municipal withholding amount"""
+        if self.wh_municipal and self.amount_untaxed:
+            self.wh_municipal_amount = self.amount_untaxed * (self.wh_municipal_rate / 100)
+    
+    @api.onchange('applies_igtf', 'amount_total', 'igtf_rate')
+    def _onchange_igtf(self):
+        """Calculate IGTF amount"""
+        if self.applies_igtf and self.amount_total:
+            self.igtf_amount = self.amount_total * (self.igtf_rate / 100)
+    
+    def _get_currency_rate(self):
+        """Get current currency rate for Venezuelan bol铆vars"""
+        self.ensure_one()
+        if self.currency_id.name == 'VES':
+            return 1.0
+        
+        # Get rate from currency rate model
+        rate = self.currency_id._get_conversion_rate(
+            self.currency_id,
+            self.company_id.currency_id,
+            self.company_id,
+            self.date or fields.Date.today()
+        )
+        return rate
+    
+    def action_post(self):
+        """Override to add Venezuelan validations"""
+        # Validate control number uniqueness
+        for move in self:
+            if move.nro_control and move.move_type in ('out_invoice', 'out_refund'):
+                existing = self.search([
+                    ('nro_control', '=', move.nro_control),
+                    ('company_id', '=', move.company_id.id),
+                    ('id', '!=', move.id),
+                    ('state', '=', 'posted')
+                ])
+                if existing:
+                    raise ValidationError(_(
+                        'Ya existe una factura con el n煤mero de control %s'
+                    ) % move.nro_control)
+        
+        # Set currency rate
+        for move in self:
+            if not move.currency_rate_used:
+                move.currency_rate_used = move._get_currency_rate()
+                move.currency_rate_date = move.date
+        
+        return super().action_post()
+    
+    def get_venezuelan_taxes_summary(self):
+        """Get summary of Venezuelan taxes for reports"""
+        self.ensure_one()
+        
+        tax_summary = {
+            'base_amount': self.amount_untaxed,
+            'vat_amount': self.amount_total - self.amount_untaxed,
+            'total_amount': self.amount_total,
+            'withholdings': {
+                'vat': self.wh_vat_amount if self.wh_vat else 0,
+                'islr': self.wh_islr_amount if self.wh_islr else 0,
+                'municipal': self.wh_municipal_amount if self.wh_municipal else 0,
+            },
+            'igtf': self.igtf_amount if self.applies_igtf else 0,
+        }
+        
+        return tax_summary
+    
+    def _get_tax_lines_for_report(self):
+        """Get tax lines formatted for Venezuelan reports"""
+        tax_lines = []
+        for line in self.line_ids.filtered(lambda l: l.tax_line_id):
+            tax_lines.append({
+                'tax_name': line.tax_line_id.name,
+                'tax_amount': line.credit or line.debit,
+                'tax_rate': line.tax_line_id.amount,
+                'base_amount': abs(line.tax_base_amount),
+            })
+        return tax_lines
 
-    # TODO: Migrar m閠odos espec韋icos desde base_contable
-    # TODO: Agregar validaciones espec韋icas de VE
-    # TODO: Implementar l骻ica de negocio
+
+class AccountMoveLine(models.Model):
+    _inherit = 'account.move.line'
+
+    # Venezuelan specific fields for move lines
+    wh_vat_line = fields.Boolean(
+        string='L铆nea de Retenci贸n IVA',
+        help='Indica si esta l铆nea corresponde a retenci贸n de IVA'
+    )
+    wh_islr_line = fields.Boolean(
+        string='L铆nea de Retenci贸n ISLR',
+        help='Indica si esta l铆nea corresponde a retenci贸n de ISLR'
+    )
+    wh_municipal_line = fields.Boolean(
+        string='L铆nea de Retenci贸n Municipal',
+        help='Indica si esta l铆nea corresponde a retenci贸n municipal'
+    )
+    
+    # Unit cost in foreign currency
+    price_unit_foreign = fields.Float(
+        string='Precio Unitario (Moneda Extranjera)',
+        digits='Product Price'
+    )
+    foreign_currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda Extranjera'
+    )

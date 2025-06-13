@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Product Template Form View -->
+    <record id="view_product_template_form_venezuelan" model="ir.ui.view">
+        <field name="name">product.template.form.venezuelan</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_form_view"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan product fields -->
+            <xpath expr="//field[@name='default_code']" position="after">
+                <field name="seniat_code"/>
+                <field name="aranceles_code"/>
+            </xpath>
+            
+            <!-- Add Venezuelan tab -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Información Venezolana" name="venezuelan_info">
+                    <group>
+                        <group string="Clasificación">
+                            <field name="product_category_ve"/>
+                            <field name="tax_exempt_reason"/>
+                        </group>
+                        
+                        <group string="Control de Precios">
+                            <field name="is_price_regulated"/>
+                            <field name="regulated_price" attrs="{'invisible': [('is_price_regulated', '=', False)]}"/>
+                            <field name="regulation_date" attrs="{'invisible': [('is_price_regulated', '=', False)]}"/>
+                        </group>
+                        
+                        <group string="Precios en Moneda Extranjera">
+                            <field name="price_usd"/>
+                            <field name="price_eur"/>
+                        </group>
+                        
+                        <group string="Información de Importación">
+                            <field name="is_imported"/>
+                            <field name="country_of_origin" attrs="{'invisible': [('is_imported', '=', False)]}" options="{'no_create': True}"/>
+                            <field name="import_permit_required" attrs="{'invisible': [('is_imported', '=', False)]}"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Product Template Tree View -->
+    <record id="view_product_template_tree_venezuelan" model="ir.ui.view">
+        <field name="name">product.template.tree.venezuelan</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan columns -->
+            <xpath expr="//field[@name='default_code']" position="after">
+                <field name="seniat_code" optional="hide"/>
+                <field name="product_category_ve" optional="hide"/>
+                <field name="is_price_regulated" optional="hide"/>
+                <field name="is_imported" optional="hide"/>
+            </xpath>
+            
+            <xpath expr="//field[@name='list_price']" position="after">
+                <field name="price_usd" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Product Template Search View -->
+    <record id="view_product_template_search_venezuelan" model="ir.ui.view">
+        <field name="name">product.template.search.venezuelan</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan search fields -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="seniat_code" string="Código SENIAT"/>
+                <field name="aranceles_code" string="Código Arancelario"/>
+            </xpath>
+            
+            <!-- Add Venezuelan filters -->
+            <xpath expr="//filter[@name='services']" position="after">
+                <separator/>
+                <filter string="Productos Importados" name="imported" domain="[('is_imported', '=', True)]"/>
+                <filter string="Precios Regulados" name="price_regulated" domain="[('is_price_regulated', '=', True)]"/>
+                <filter string="Con Exención Fiscal" name="tax_exempt" domain="[('tax_exempt_reason', '!=', False)]"/>
+            </xpath>
+            
+            <!-- Add Venezuelan group by -->
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter string="Categoría Venezolana" name="group_category_ve" domain="[]" context="{'group_by': 'product_category_ve'}"/>
+                <filter string="Motivo Exención" name="group_tax_exempt" domain="[]" context="{'group_by': 'tax_exempt_reason'}"/>
+                <filter string="País de Origen" name="group_country_origin" domain="[]" context="{'group_by': 'country_of_origin'}"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Product Product Form View -->
+    <record id="view_product_form_venezuelan" model="ir.ui.view">
+        <field name="name">product.product.form.venezuelan</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add import batch information -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Información de Lote" name="batch_info" attrs="{'invisible': [('is_imported', '=', False)]}">
+                    <group>
+                        <group>
+                            <field name="import_batch"/>
+                            <field name="import_date"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            
+        </field>
+    </record>
+    
+</odoo>

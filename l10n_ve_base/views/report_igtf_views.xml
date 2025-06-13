@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- IGTF Report Template -->
+    <template id="report_igtf_document">
+        <t t-call="web.external_layout">
+            <div class="page">
+                <div class="oe_structure"/>
+                
+                <div class="row">
+                    <div class="col-12">
+                        <h2 class="text-center">
+                            <strong>REPORTE IGTF</strong>
+                        </h2>
+                        <h4 class="text-center">
+                            <span t-field="o.company_id.name"/>
+                        </h4>
+                        <h5 class="text-center">
+                            Período: <span t-esc="time.strftime('%d/%m/%Y', time.strptime(str(o.date_from), '%Y-%m-%d'))"/> - 
+                            <span t-esc="time.strftime('%d/%m/%Y', time.strptime(str(o.date_to), '%Y-%m-%d'))"/>
+                        </h5>
+                    </div>
+                </div>
+                
+                <br/>
+                
+                <!-- Summary Report -->
+                <div t-if="o.report_type == 'summary'">
+                    <table class="table table-sm o_main_table">
+                        <thead>
+                            <tr>
+                                <th>Concepto</th>
+                                <th class="text-right">Cantidad</th>
+                                <th class="text-right">Monto Base</th>
+                                <th class="text-right">Monto IGTF</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Pagos</strong></td>
+                                <td class="text-right">
+                                    <span t-esc="len(payments)"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="sum(p.amount - p.igtf_amount for p in payments)" t-options="{'widget': 'monetary', 'display_currency': o.company_id.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="sum(p.igtf_amount for p in payments)" t-options="{'widget': 'monetary', 'display_currency': o.company_id.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="sum(p.amount for p in payments)" t-options="{'widget': 'monetary', 'display_currency': o.company_id.currency_id}"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Facturas</strong></td>
+                                <td class="text-right">
+                                    <span t-esc="len(invoices)"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="sum(i.amount_total - i.igtf_amount for i in invoices)" t-options="{'widget': 'monetary', 'display_currency': o.company_id.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="sum(i.igtf_amount for i in invoices)" t-options="{'widget': 'monetary', 'display_currency': o.company_id.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <span t-esc="sum(i.amount_total for i in invoices)" t-options="{'widget': 'monetary', 'display_currency': o.company_id.currency_id}"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="border-black">
+                                <td><strong>TOTALES</strong></td>
+                                <td class="text-right">
+                                    <strong t-esc="len(payments) + len(invoices)"/>
+                                </td>
+                                <td class="text-right">
+                                    <strong t-esc="sum(p.amount - p.igtf_amount for p in payments) + sum(i.amount_total - i.igtf_amount for i in invoices)" t-options="{'widget': 'monetary', 'display_currency': o.company_id.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <strong t-esc="sum(p.igtf_amount for p in payments) + sum(i.igtf_amount for i in invoices)" t-options="{'widget': 'monetary', 'display_currency': o.company_id.currency_id}"/>
+                                </td>
+                                <td class="text-right">
+                                    <strong t-esc="sum(p.amount for p in payments) + sum(i.amount_total for i in invoices)" t-options="{'widget': 'monetary', 'display_currency': o.company_id.currency_id}"/>
+                                </td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                
+                <!-- Detailed Report -->
+                <div t-if="o.report_type == 'detailed'">
+                    <table class="table table-sm o_main_table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Tipo</th>
+                                <th>Documento</th>
+                                <th>Cliente/Proveedor</th>
+                                <th>Método Pago</th>
+                                <th class="text-right">Base</th>
+                                <th class="text-right">IGTF</th>
+                                <th class="text-right">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <t t-foreach="payments" t-as="payment">
+                                <tr>
+                                    <td><span t-field="payment.date"/></td>
+                                    <td>Pago</td>
+                                    <td><span t-field="payment.name"/></td>
+                                    <td><span t-field="payment.partner_id.name"/></td>
+                                    <td><span t-field="payment.payment_method_ve.name"/></td>
+                                    <td class="text-right">
+                                        <span t-esc="payment.amount - payment.igtf_amount" t-options="{'widget': 'monetary', 'display_currency': payment.currency_id}"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="payment.igtf_amount" t-options="{'widget': 'monetary', 'display_currency': payment.currency_id}"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="payment.amount" t-options="{'widget': 'monetary', 'display_currency': payment.currency_id}"/>
+                                    </td>
+                                </tr>
+                            </t>
+                            
+                            <t t-foreach="invoices" t-as="invoice">
+                                <tr>
+                                    <td><span t-field="invoice.invoice_date"/></td>
+                                    <td>Factura</td>
+                                    <td><span t-field="invoice.name"/></td>
+                                    <td><span t-field="invoice.partner_id.name"/></td>
+                                    <td>
+                                        <t t-foreach="invoice.payment_method_ids" t-as="method">
+                                            <span t-field="method.name"/>
+                                            <t t-if="not method_last">, </t>
+                                        </t>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-esc="invoice.amount_total - invoice.igtf_amount" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="invoice.igtf_amount" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/>
+                                    </td>
+                                    <td class="text-right">
+                                        <span t-field="invoice.amount_total" t-options="{'widget': 'monetary', 'display_currency': invoice.currency_id}"/>
+                                    </td>
+                                </tr>
+                            </t>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="oe_structure"/>
+            </div>
+        </t>
+    </template>
+    
+    <!-- IGTF Report Action -->
+    <record id="action_report_igtf" model="ir.actions.report">
+        <field name="name">Reporte IGTF</field>
+        <field name="model">report.igtf.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">l10n_ve_base.report_igtf_document</field>
+        <field name="report_file">l10n_ve_base.report_igtf_document</field>
+        <field name="binding_model_id" ref="model_report_igtf_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+    
+</odoo>

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sale Order Form View -->
+    <record id="view_sale_order_form_venezuelan" model="ir.ui.view">
+        <field name="name">sale.order.form.venezuelan</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan fields after validity_date -->
+            <xpath expr="//field[@name='validity_date']" position="after">
+                <field name="fiscal_position_ve"/>
+            </xpath>
+            
+            <!-- Add Venezuelan tab -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Información Venezolana" name="venezuelan_info">
+                    <group>
+                        <group string="Información de Exportación">
+                            <field name="is_export_sale"/>
+                            <field name="export_permit_number" attrs="{'invisible': [('is_export_sale', '=', False)]}"/>
+                            <field name="incoterm_ve" attrs="{'invisible': [('is_export_sale', '=', False)]}"/>
+                        </group>
+                        
+                        <group string="Métodos de Pago">
+                            <field name="payment_method_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                        </group>
+                        
+                        <group string="IGTF">
+                            <field name="applies_igtf" readonly="1"/>
+                            <field name="igtf_rate" attrs="{'invisible': [('applies_igtf', '=', False)]}"/>
+                            <field name="igtf_amount" attrs="{'invisible': [('applies_igtf', '=', False)]}" widget="monetary"/>
+                        </group>
+                        
+                        <group string="Moneda">
+                            <field name="currency_rate_sale"/>
+                            <field name="amount_total_ves" widget="monetary"/>
+                        </group>
+                        
+                        <group string="Impresora Fiscal">
+                            <field name="use_fiscal_printer"/>
+                            <field name="fiscal_printer_serial" attrs="{'invisible': [('use_fiscal_printer', '=', False)]}"/>
+                        </group>
+                        
+                        <group string="Precios en Otras Monedas">
+                            <field name="show_prices_usd"/>
+                            <field name="show_prices_eur"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            
+            <!-- Add Venezuelan fields to sale lines -->
+            <xpath expr="//field[@name='order_line']/tree/field[@name='tax_id']" position="after">
+                <field name="seniat_code" optional="hide"/>
+                <field name="price_unit_usd" optional="hide" attrs="{'column_invisible': [('parent.show_prices_usd', '=', False)]}"/>
+                <field name="price_unit_eur" optional="hide" attrs="{'column_invisible': [('parent.show_prices_eur', '=', False)]}"/>
+                <field name="tax_exempt_reason" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Sale Order Tree View -->
+    <record id="view_sale_order_tree_venezuelan" model="ir.ui.view">
+        <field name="name">sale.order.tree.venezuelan</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan columns -->
+            <xpath expr="//field[@name='amount_total']" position="after">
+                <field name="igtf_amount" optional="hide" sum="Total IGTF"/>
+                <field name="currency_rate_sale" optional="hide"/>
+                <field name="is_export_sale" optional="hide"/>
+                <field name="use_fiscal_printer" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Sale Order Search View -->
+    <record id="view_sale_order_filter_venezuelan" model="ir.ui.view">
+        <field name="name">sale.order.select.venezuelan</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan filters -->
+            <xpath expr="//filter[@name='my_sale_orders_filter']" position="after">
+                <separator/>
+                <filter string="Ventas de Exportación" name="export_sales" domain="[('is_export_sale', '=', True)]"/>
+                <filter string="Con IGTF" name="with_igtf" domain="[('applies_igtf', '=', True)]"/>
+                <filter string="Impresora Fiscal" name="fiscal_printer" domain="[('use_fiscal_printer', '=', True)]"/>
+            </xpath>
+            
+            <!-- Add Venezuelan group by -->
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter string="Posición Fiscal VE" name="group_fiscal_position_ve" domain="[]" context="{'group_by': 'fiscal_position_ve'}"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+</odoo>

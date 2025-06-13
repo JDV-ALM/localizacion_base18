@@ -1,24 +1,59 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Venezuela - Localizaci髇 Base',
+    'name': "Venezuela - Base Localization",
     'version': '18.0.1.0.0',
-    'category': 'Localization/Account',
-    'summary': 'Configuraciones fundamentales para localizaci髇 venezolana',
+    'summary': "M贸dulo base para localizaci贸n contable venezolana",
     'description': """
-Configuraciones fundamentales para localizaci髇 venezolana
-
-Este m骴ulo es parte de la refactorizaci髇 de la localizaci髇 venezolana,
-separando responsabilidades para mejor mantenibilidad.
+        M贸dulo base para localizaci贸n contable venezolana
+        ================================================
+        
+        Este m贸dulo proporciona las funcionalidades base para la localizaci贸n 
+        contable venezolana, incluyendo:
+        
+        * Configuraciones base para empresas venezolanas
+        * Extensiones para partners (RIF, cedula)
+        * Configuraciones contables espec铆ficas para Venezuela
+        * Configuraciones de impuestos venezolanos
+        * Configuraciones de diarios contables
+        * Flujo de pagos adaptado a Venezuela
+        * Reportes IGTF
+        
+        Colaborador: Ing. Darrell Sojo
     """,
-    'author': 'Tu Nombre/Empresa',
-    'website': 'https://tu-website.com',
+    'category': 'Accounting/Localizations',
+    'author': 'Darrell Sojo / Frank Service',
+    'website': '',
     'license': 'LGPL-3',
-    'depends': ['account'],
+    'depends': [
+        'base',
+        'account',
+        'account_accountant',
+        'account_debit_note',
+        'sale',
+        'purchase',
+        'stock',
+        'stock_account',
+    ],
     'data': [
         'security/ir.model.access.csv',
-        'views/l10n_ve_base_views.xml',
+        'views/account_tax_views.xml',
+        'views/account_journal_views.xml',
+        'views/account_move_views.xml',
+        'views/res_partner_views.xml',
+        'views/res_company_views.xml',
+        'views/modo_pago_views.xml',
+        'views/product_views.xml',
+        'views/account_payment_register_views.xml',
+        'views/purchase_views.xml',
+        'views/sale_views.xml',
+        'views/stock_valuation_layer_views.xml',
+        'wizard/pago_wizard.xml',
+        'wizard/report_igtf_wizard.xml',
+        'views/report_igtf_views.xml',
     ],
+    'demo': [],
     'installable': True,
-    'application': false,
-    'auto_install': true,
+    'application': False,
+    'auto_install': False,
+    'post_init_hook': 'post_init_hook',
 }

@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Account Journal Form View -->
+    <record id="view_account_journal_form_venezuelan" model="ir.ui.view">
+        <field name="name">account.journal.form.venezuelan</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="account.view_account_journal_form"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan journal type -->
+            <xpath expr="//field[@name='type']" position="after">
+                <field name="journal_type_ve"/>
+            </xpath>
+            
+            <!-- Add Venezuelan configuration tab -->
+            <xpath expr="//notebook" position="inside">
+                <page string="Configuración Venezolana" name="venezuelan_config">
+                    <group>
+                        <group string="Impresora Fiscal" attrs="{'invisible': [('type', '!=', 'sale')]}">
+                            <field name="fiscal_printer"/>
+                            <field name="fiscal_printer_serial" attrs="{'invisible': [('fiscal_printer', '=', False)]}"/>
+                        </group>
+                        
+                        <group string="Secuencias" attrs="{'invisible': [('type', '!=', 'sale')]}">
+                            <field name="invoice_sequence_id"/>
+                            <field name="control_sequence_id"/>
+                        </group>
+                        
+                        <group string="Configuración Bancaria" attrs="{'invisible': [('type', '!=', 'bank')]}">
+                            <field name="bank_account_type_ve"/>
+                            <field name="bank_code"/>
+                        </group>
+                        
+                        <group string="IGTF" attrs="{'invisible': [('type', 'not in', ['bank', 'cash'])]}">
+                            <field name="applies_igtf"/>
+                            <field name="igtf_tax_id" attrs="{'invisible': [('applies_igtf', '=', False)]}" domain="[('is_igtf', '=', True)]"/>
+                        </group>
+                        
+                        <group string="Retenciones">
+                            <field name="is_withholding_journal"/>
+                            <field name="withholding_type" attrs="{'invisible': [('is_withholding_journal', '=', False)]}"/>
+                        </group>
+                        
+                        <group string="Diferencial Cambiario">
+                            <field name="is_currency_exchange"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Account Journal Tree View -->
+    <record id="view_account_journal_tree_venezuelan" model="ir.ui.view">
+        <field name="name">account.journal.tree.venezuelan</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="account.view_account_journal_tree"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan columns -->
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="journal_type_ve" optional="show"/>
+                <field name="fiscal_printer" optional="hide"/>
+                <field name="applies_igtf" optional="hide"/>
+                <field name="is_withholding_journal" optional="hide"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Account Journal Search View -->
+    <record id="view_account_journal_search_venezuelan" model="ir.ui.view">
+        <field name="name">account.journal.search.venezuelan</field>
+        <field name="model">account.journal</field>
+        <field name="inherit_id" ref="account.view_account_journal_search"/>
+        <field name="arch" type="xml">
+            
+            <!-- Add Venezuelan filters -->
+            <xpath expr="//filter[@name='bank']" position="after">
+                <separator/>
+                <filter string="Impresora Fiscal" name="fiscal_printer" domain="[('fiscal_printer', '=', True)]"/>
+                <filter string="Aplica IGTF" name="applies_igtf" domain="[('applies_igtf', '=', True)]"/>
+                <filter string="Retenciones" name="withholding" domain="[('is_withholding_journal', '=', True)]"/>
+                <filter string="Diferencial Cambiario" name="currency_exchange" domain="[('is_currency_exchange', '=', True)]"/>
+            </xpath>
+            
+            <!-- Add Venezuelan group by -->
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter string="Tipo Venezolano" name="group_journal_type_ve" domain="[]" context="{'group_by': 'journal_type_ve'}"/>
+                <filter string="Tipo Retención" name="group_withholding_type" domain="[]" context="{'group_by': 'withholding_type'}"/>
+            </xpath>
+            
+        </field>
+    </record>
+    
+    <!-- Action to create Venezuelan default journals -->
+    <record id="action_create_venezuelan_journals" model="ir.actions.server">
+        <field name="name">Crear Diarios Venezolanos por Defecto</field>
+        <field name="model_id" ref="account.model_account_journal"/>
+        <field name="state">code</field>
+        <field name="code">
+company = env.company
+if company:
+    created_journals = env['account.journal'].create_venezuelan_default_journals(company)
+    if created_journals:
+        action = {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Diarios Creados',
+                'message': f'Se crearon {len(created_journals)} diarios venezolanos por defecto.',
+                'type': 'success',
+            }
+        }
+    else:
+        action = {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Sin Cambios', 
+                'message': 'Los diarios ya existen en el sistema.',
+                'type': 'info',
+            }
+        }
+        </field>
+    </record>
+    
+    <menuitem id="menu_create_venezuelan_journals"
+              name="Crear Diarios por Defecto"
+              parent="menu_venezuelan_tax_config"
+              action="action_create_venezuelan_journals"
+              sequence="20"/>
+    
+</odoo>
