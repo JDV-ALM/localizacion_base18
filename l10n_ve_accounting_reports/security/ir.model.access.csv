@@ -1,3 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_account_book_sales,access_account_book_sales,model_account_book_sales,base.group_user,1,1,1,1
-access_account_book_purchases,access_account_book_purchases,model_account_book_purchases,base.group_user,1,1,1,1
