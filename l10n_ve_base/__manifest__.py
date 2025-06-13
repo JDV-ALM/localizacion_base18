@@ -21,7 +21,7 @@
         Colaborador: Ing. Darrell Sojo
     """,
     'category': 'Accounting/Localizations',
-    'author': 'Darrell Sojo / Frank Service',
+    'author': 'ALMUS',
     'website': '',
     'license': 'LGPL-3',
     'depends': [
