@@ -134,7 +134,7 @@
               parent="account.menu_finance_reports" 
               sequence="100"/>
     
-    <!-- IGTF Report Menu -->
+    <!-- IGTF Report Menu - Comentado temporalmente
     <record id="action_report_igtf_wizard" model="ir.actions.act_window">
         <field name="name">Reporte IGTF</field>
         <field name="res_model">report.igtf.wizard</field>
@@ -147,5 +147,6 @@
               parent="menu_venezuelan_reports"
               action="action_report_igtf_wizard"
               sequence="10"/>
+    -->
     
 </odoo>

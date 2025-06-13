@@ -2,7 +2,6 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_modo_pago_user,access_modo_pago_user,model_modo_pago,base.group_user,1,0,0,0
 access_modo_pago_manager,access_modo_pago_manager,model_modo_pago,account.group_account_manager,1,1,1,1
 access_pago_wizard_user,access_pago_wizard_user,model_pago_wizard,base.group_user,1,1,1,1
-access_report_igtf_wizard_user,access_report_igtf_wizard_user,model_report_igtf_wizard,base.group_user,1,1,1,1
 access_res_company_user,access_res_company_user,model_res_company,base.group_user,1,1,1,0
 access_res_partner_user,access_res_partner_user,model_res_partner,base.group_user,1,1,1,0
 access_account_move_user,access_account_move_user,model_account_move,base.group_user,1,1,1,0

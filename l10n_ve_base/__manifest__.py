@@ -21,7 +21,7 @@
         Colaborador: Ing. Darrell Sojo
     """,
     'category': 'Accounting/Localizations',
-    'author': 'ALMUS',
+    'author': 'Almus',
     'website': '',
     'license': 'LGPL-3',
     'depends': [
@@ -48,8 +48,8 @@
         'views/sale_views.xml',
         'views/stock_valuation_layer_views.xml',
         'wizard/pago_wizard.xml',
-        'wizard/report_igtf_wizard.xml',
-        'views/report_igtf_views.xml',
+        # 'wizard/report_igtf_wizard.xml',  # Comentado temporalmente
+        # 'views/report_igtf_views.xml',    # Comentado temporalmente
     ],
     'demo': [],
     'installable': True,

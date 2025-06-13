@@ -1,7 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from . import models
-from . import wizard
+# Importar wizards individualmente para evitar importaciones circulares
+try:
+    from . import wizard
+except ImportError:
+    pass
 
 def post_init_hook(env):
     """Post-installation hook to configure Venezuelan localization defaults"""
