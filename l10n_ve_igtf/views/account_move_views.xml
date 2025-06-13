@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="l10n_ve_igtf_view_move_form" model="ir.ui.view">
+    <field name="name">account.move.form.igtf</field>
+    <field name="model">account.move</field>
+    <field name="inherit_id" ref="account.view_move_form"/>
+    <field name="arch" type="xml">
+      <!-- Lo insertamos junto al resto de campos "fiscales" en la columna izquierda -->
+      <xpath expr="//field[@name='price_ref_div_product']" position="after">
+        <field name="pago_divisas"/>
+      </xpath>
+    </field>
+  </record>
+</odoo>

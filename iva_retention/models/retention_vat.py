@@ -4,6 +4,7 @@ import logging
 
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_round
 from datetime import datetime
 
 
@@ -89,7 +90,6 @@ class RetentionVat(models.Model):
             'move_type':'entry',
             'currency_id':self.currency_id.id,
             'posted_before':False,
-            'partner_id':self.partner_id.id,
             'ref':"Comprobante de retencion iva de la factura nro "+self.invoice_id.invoice_number_next if self.invoice_id.invoice_number_next else self.invoice_number_next,
             })
         move_id=self.env['account.move'].create(vals)
@@ -100,7 +100,6 @@ class RetentionVat(models.Model):
             'move_id':move_id.id,
             'balance':-1*self.vat_retentioned,
             'journal_id':self.journal_id.id,
-            'partner_id':self.partner_id.id,
             })
         move_id.line_ids.create(valores)
         valores2=({
@@ -110,7 +109,6 @@ class RetentionVat(models.Model):
             'move_id':move_id.id,
             'balance':self.vat_retentioned,
             'journal_id':self.journal_id.id,
-            'partner_id':self.partner_id.id,
             })
         move_id.line_ids.create(valores2)
         move_id._post(soft=False)
@@ -350,3 +348,131 @@ class VatRetentionInvoiceLine(models.Model):
             if line.tax_ids.aliquot=='exempt':
                 valor = valor + line.price_subtotal*factor
         return valor
+    
+    # — Campos relacionados existentes —
+    debit_note_number   = fields.Char(  related='invoice_id.debit_origin_id.name',   readonly=True, store=False)
+    credit_note_number  = fields.Char(  related='invoice_id.reversed_entry_id.name',  readonly=True, store=False)
+    tipo_trans          = fields.Selection(
+        related='invoice_id.move_type',
+        readonly=True, store=False,
+        string='Tipo Transacción',
+    )
+    factura_afectada    = fields.Char(  related='invoice_id.name',                  readonly=True, store=False)
+    currency_id         = fields.Many2one(
+        'res.currency', related='invoice_id.currency_id', readonly=True, store=False,
+    )
+    total_factura       = fields.Monetary(
+        related='invoice_id.amount_total', readonly=True, store=False,
+        string='Total con IVA'
+    )
+    impuesto            = fields.Monetary(
+        related='invoice_id.amount_tax',   readonly=True, store=False,
+        string='Impuesto Causado', currency_field='currency_id'
+    )
+    base_imponible      = fields.Monetary(
+        related='invoice_id.amount_untaxed', readonly=True, store=False,
+        string='Base Imponible', currency_field='currency_id'
+    )
+
+    # — Compras sin derecho (exento) —
+    exento              = fields.Monetary(
+        string='Compras sin Crédito Fiscal',
+        compute='_compute_exento',
+        readonly=True, store=False,
+        currency_field='currency_id'
+    )
+    @api.depends('invoice_id.invoice_line_ids.price_subtotal',
+                 'invoice_id.invoice_line_ids.tax_ids')
+    def _compute_exento(self):
+        for line in self:
+            inv = line.invoice_id
+            line.exento = sum(
+                l.price_subtotal for l in inv.invoice_line_ids
+                if not l.tax_ids
+            )
+
+    # — Reducido —
+    base_reducido       = fields.Monetary(
+        string='Base Reducido',
+        compute='_compute_reducido',
+        readonly=True, store=False,
+        currency_field='currency_id'
+    )
+    impuesto_reducido   = fields.Monetary(
+        string='Imp. Reducido',
+        compute='_compute_reducido',
+        readonly=True, store=False,
+        currency_field='currency_id'
+    )
+    alicuota_reducido   = fields.Float(
+        string='% Alic. Reducido',
+        compute='_compute_reducido',
+        readonly=True, store=False,
+    )
+    @api.depends('invoice_id.invoice_line_ids.price_subtotal',
+                 'invoice_id.invoice_line_ids.tax_ids')
+    def _compute_reducido(self):
+        # Asume que los impuestos con tasa reducida están marcados con 'reducido' en el nombre
+        for line in self:
+            inv = line.invoice_id
+            base = impuesto = 0.0
+            for l in inv.invoice_line_ids:
+                for t in l.tax_ids:
+                    if 'reducido' in (t.name or '').lower():
+                        base += l.price_subtotal
+                        impuesto += sum(t.compute_all(l.price_unit, inv.currency_id, l.quantity, product=l.product_id)['taxes'][0]['amount'] for t in [t])
+            line.base_reducido     = base
+            line.impuesto_reducido = impuesto
+            line.alicuota_reducido = float_round((impuesto / base * 100) if base else 0.0, 2)
+
+    # — Adicional —
+    base_adicional       = fields.Monetary(
+        string='Base Adicional',
+        compute='_compute_adicional',
+        readonly=True, store=False,
+        currency_field='currency_id'
+    )
+    impuesto_adicional   = fields.Monetary(
+        string='Imp. Adicional',
+        compute='_compute_adicional',
+        readonly=True, store=False,
+        currency_field='currency_id'
+    )
+    alicuota_adicional   = fields.Float(
+        string='% Alic. Adicional',
+        compute='_compute_adicional',
+        readonly=True, store=False,
+    )
+    @api.depends('invoice_id.invoice_line_ids.price_subtotal',
+                 'invoice_id.invoice_line_ids.tax_ids')
+    def _compute_adicional(self):
+        # Asume que los impuestos con tasa adicional están marcados con 'adicional' en el nombre
+        for line in self:
+            inv = line.invoice_id
+            base = impuesto = 0.0
+            for l in inv.invoice_line_ids:
+                for t in l.tax_ids:
+                    if 'adicional' in (t.name or '').lower():
+                        base += l.price_subtotal
+                        impuesto += sum(t.compute_all(l.price_unit, inv.currency_id, l.quantity, product=l.product_id)['taxes'][0]['amount'] for t in [t])
+            line.base_adicional     = base
+            line.impuesto_adicional = impuesto
+            line.alicuota_adicional = float_round((impuesto / base * 100) if base else 0.0, 2)
+    
+    alicuota = fields.Float(
+        string='% Alicuota',
+        compute='_compute_alicuota',
+        readonly=True,
+        store=False,
+    )
+
+    @api.depends('invoice_id.invoice_line_ids.tax_ids')
+    def _compute_alicuota(self):
+        for line in self:
+            # Tomamos el porcentaje del primer impuesto aplicado a la factura
+            taxes = line.invoice_id.invoice_line_ids.mapped('tax_ids')
+            line.alicuota = taxes and taxes[0].amount or 0.0
+
+    
+
+    

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="stock_invoice_alert_banner" inherit_id="web.layout">
+        <xpath expr="//body" position="after">
+            <t t-set="alert_msg" t-value="request.env['stock.picking'].sudo().alert_views()"/>
+            <t t-if="alert_msg">
+                <div style="
+                    text-align: center;
+                    color: #FFFFFF;
+                    background-color: #D0442C;
+                    display: block;
+                    font-size: 16px;
+                    padding: 5px;
+                ">
+                    <t t-out="alert_msg"/>
+                </div>
+            </t>
+        </xpath>
+        <xpath expr="//head" position="inside">
+            <meta name="robots" content="noindex,nofollow"/>
+        </xpath>
+    </template>
+</odoo>

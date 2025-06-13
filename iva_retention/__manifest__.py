@@ -10,11 +10,10 @@
         'website': '',
         'images': [],
         'depends': [
-            'base',
             'account',
             'account_accountant',
+            'base',
             'base_contable',
-            #'sign',
             ],
         'data': [
             'security/ir.model.access.csv',

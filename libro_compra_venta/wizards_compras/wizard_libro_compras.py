@@ -283,7 +283,7 @@ class libro_ventas(models.TransientModel):
             'state_retantion': det.vat_ret_id.state,
             'state': det.invoice_id.state,
             'currency_id':det.invoice_id.currency_id.id,
-            'ref':det.invoice_id.fact_afect,
+            'ref':det.invoice_id.ref,
             'total_exento':self.conv_div_nac(det.base_exenta,det),
             'alicuota_reducida':self.conv_div_nac(det.impuesto_reducida,det),
             'alicuota_general':self.conv_div_nac(det.impuesto_general,det),
@@ -383,6 +383,14 @@ class libro_ventas(models.TransientModel):
         ws1.write_merge(row, row, 18, 19,  "Alicuota Reducida (8%)", header_content_style_center)
         ws1.write_merge(row, row, 20, 21,  "Alicuota Gral+Adicional", header_content_style_center)
         ws1.write_merge(row, row, 22, 22,  "IVA Retenido", header_content_style_center)
+        
+        # ======== AÑADIR ESTO ========
+        # Referencia al diario de Notas de Débito Compras
+        debit_journal_cp = self.env.ref(
+            'l10n_ve_debit_note.journal_nd_cp',
+            raise_if_not_found=False
+        )
+        # ============================
 
         #CABECERA DE LA TABLA
         row=row+1
@@ -452,8 +460,8 @@ class libro_ventas(models.TransientModel):
         ws1.col(col+21).width = int(len('Impuesto IVA')*256)
         ws1.write(row,col+21,"Impuesto IVA",sub_header_style_c)
 
-        ws1.col(col+22).width = int(len('(al vendedor)')*256)
-        ws1.write(row,col+22,"(al vendedor)",sub_header_style_c)
+        ws1.col(col+22).width = int(len('(al proveedor)')*256)
+        ws1.write(row,col+22,"(al proveedor)",sub_header_style_c)
 
         center = xlwt.easyxf("align: horiz center")
         right = xlwt.easyxf("align: horiz right")
@@ -478,12 +486,12 @@ class libro_ventas(models.TransientModel):
                 ws1.write(row,col+1,str(invoice.formato_fecha2(invoice.invoice_id.invoice_date)),center)
                 ws1.write(row,col+2,str(invoice.doc_cedula(invoice.partner.id)),center)
                 ws1.write(row,col+3,str(invoice.partner.name),center)
-                if invoice.invoice_id.move_type=='in_invoice':
+                if (invoice.invoice_id.move_type=='in_invoice'and invoice.invoice_id.journal_id != debit_journal_cp):
                     ws1.write(row,col+4,str(invoice.invoice_number),center)
                 else:
                     ws1.write(row,col+4,'')
                 ws1.write(row,col+5,str(invoice.invoice_ctrl_number),center)
-                if invoice.invoice_id.move_type=='in_receipt':
+                if invoice.invoice_id.journal_id == debit_journal_cp:
                     ws1.write(row,col+6,str(invoice.invoice_number),center)
                 else:
                     ws1.write(row,col+6,'')
@@ -583,7 +591,7 @@ class libro_ventas(models.TransientModel):
         ws1.write(row,col+5,invoice.float_format(acum_ali_general+acum_ali_reducida+acum_ali_adicional),sub_header_style_r)
 
         row=row+1
-        ws1.write_merge(row, row, col+1, col+3, "IVA Retenido (al Vendedor)", sub_header_style_l)
+        ws1.write_merge(row, row, col+1, col+3, "IVA Retenido (al proveedor)", sub_header_style_l)
         ws1.write(row,col+5,invoice.float_format(acum_retenidos),sub_header_style_r)
        
 

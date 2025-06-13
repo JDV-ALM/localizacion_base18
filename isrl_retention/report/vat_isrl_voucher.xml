@@ -6,7 +6,7 @@
         <field name="orientation">Landscape</field>
         <field name="page_height">330</field>
         <field name="page_width">219</field>
-        <field name="margin_top">15</field>
+        <field name="margin_top">45</field>
         <field name="margin_bottom">5</field>
         <field name="header_line" eval="False"/>
     </record>
@@ -16,24 +16,29 @@
             <t t-call="web.html_container">
                 <t t-foreach="docs" t-as="o">
                     <t t-call="web.basic_layout" t-lang="es_VE">
-                        
+                        <div class="header">
+                            <div class="row">
+                                <div class="col-12">
+                                    <table style="width:100%;" class="table table-borderless">
+                                        <tr>
+                                            <td style="width:30%;text-align:center;">
+                                                <t t-if="o.invoice_id.company_id.logo">  
+                                                    <img t-attf-src="data:image/*;base64,{{o.invoice_id.company_id.logo}}" style="width:auto; height:50px;"/>
+                                                </t>
+                                            </td>
+                                            <td style="width:70%;">
+                                            </td>
+                                        </tr>
+
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                         <div class="page">
-                            <table  style="width:97%;" class="table table-borderless">
-                                <tr>
-                                    <td align="left">
-                                        <t t-if="o.invoice_id.company_id.logo">  
-                                            <img t-attf-src="data:image/*;base64,{{o.invoice_id.company_id.logo}}" style="width:auto; height:50px;"/>
-                                        </t>
-                                    </td>
-                                    <td align="right">
-                                        <h2 style="font-size:20px;">Comprobante de Retención de ISLR Nº <small><t t-esc="o.name"/></small></h2>
-                                        <br/>
-                                        <h2 style="font-size:20px;" ><small> Fecha : <span t-field="o.invoice_id.date"/></small></h2>
-                                    </td>
-                                </tr>
-                            </table>
+                            <h2 style="font-size:20px;">Comprobante de Retención de ISLR Nº <small><t t-esc="o.name"/></small></h2>
+                            <h2 style="font-size:20px;" ><small> Fecha : <span t-field="o.invoice_id.date"/></small></h2>
                             <div class=" border border-dark p-2">
-                                <table  style="width:97%;" class="table table-borderless table-sm">
+                                <table  style="width:97%;" class="table table-borderless">
                                     <colgroup>
                                         <col span="1" style="width: 40%;"/>
                                         <col span="1" style="width: 40%;"/>
@@ -71,7 +76,7 @@
                             </div>
                             <br/>
                             <div class=" border border-dark p-2">
-                            <table  style="width:97%;"  class="table table-borderless table-sm">
+                            <table  style="width:97%;"  class="table table-borderless">
                                 <colgroup>
                                     <col span="1" style="width: 40%;"/>
                                     <col span="1" style="width: 40%;"/>
@@ -102,13 +107,7 @@
                             </table>
                             </div>
                             <br/>
-                            
                             <div class="container">
-                                <div style="position: absolute; left: 700px; top: 670px; z-index: 1;">
-                                    <t t-if="o.create_uid.sign_signature"> 
-                                        <img t-attf-src="data:image/*;base64,{{o.create_uid.sign_signature}}" style="width:auto; height:100px;"/>
-                                    </t>
-                                </div>
                                 <div class="row text-center" style="background-color:#FFFFFF; font-size:12px;">
                                     <div class="col-1 border border-dark p-2" >
                                         Código 
@@ -197,7 +196,6 @@
                                     </div>
                                 </div>
                                 <div class="row">
-
                                     <div class="col-5 text-center">
                                         <span t-field="o.partner_id.name"/>
                                         <br/>

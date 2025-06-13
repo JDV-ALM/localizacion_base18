@@ -1,0 +1,24 @@
+<odoo>
+  <template id="watermark_factura_formato_libre"
+            inherit_id="factura_formato_libre.facturas_libre"
+            priority="20">
+    <!-- Antes de la página, insertamos el watermark -->
+    <xpath expr="//div[contains(@class, 'page')]" position="before">
+      <t t-if="docs and docs[0].print_count &gt; 1">
+        <div
+          style="
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 60px;
+            color: rgba(0, 0, 0, 0.1);
+            pointer-events: none;
+            z-index: 1000;
+          ">
+          COPIA
+        </div>
+      </t>
+    </xpath>
+  </template>
+</odoo>

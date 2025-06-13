@@ -9,11 +9,6 @@
                 <field name="vat_ret_id" invisible="move_type=='entry'"/>
                 <field name="vat_ret_aux_id" invisible="1" />
             </xpath>
-
-            <xpath expr="//field[@name='ref']" position="after">
-                <field name="contacto_id" invisible="move_type!='entry' or contacto_id==False" string="Contacto"/>
-            </xpath>
-
         </field>
     </record>
 

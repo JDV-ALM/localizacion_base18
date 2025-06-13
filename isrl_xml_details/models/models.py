@@ -50,11 +50,16 @@ class XmlLines(models.Model):
 
     def generar_xml(self):
         periodo = str(self.date_from.year) 
-        rif= self.env.company.partner_id.doc_tipo+self.env.company.vat.replace('-', '')
+        
         if  10 > int(self.date_from.month)   :
             periodo += '0'+ str(self.date_from.month)
         else :
             periodo += str(self.date_from.month)
+        
+        partner = self.env.company.partner_id
+        doc_type = partner.doc_tipo or ''                   # si es False o None, cadena vacía
+        vat      = (partner.vat or '').replace('-', '')     # idem
+        rif      = f"{doc_type}{vat}"
 
         elemento_1 = ET.Element('RelacionRetencionesISLR',RifAgente=rif,Periodo=periodo)
         for item in self.line_id:

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <record id="journal_nd_cp" model="account.journal">
+    <field name="name">Nota de Débito Compras</field>
+    <field name="code">ND-CP</field>
+    <field name="type">purchase</field>
+    <!-- Ajusta la compañía si la necesitas: -->
+    <field name="company_id" ref="base.main_company"/>
+  </record>
+</odoo>

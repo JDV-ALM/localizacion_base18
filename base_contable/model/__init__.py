@@ -12,3 +12,4 @@ from . import res_currency_rate_inherit
 from . import stock_picking
 from . import stock_valuation_layer
 from . import sale_purchase_order
+from . import account_partial_reconcile

@@ -1,0 +1,34 @@
+<odoo>
+  <data noupdate="1">
+    <!-- 1) Diario ND-VT -->
+    <record id="journal_nd_vt" model="account.journal">
+      <field name="name">Nota de Débito Ventas</field>
+      <field name="code">ND-VT</field>
+      <field name="type">sale</field>
+      <field name="company_id" ref="base.main_company"/>
+    </record>
+
+    <!-- 2) Acción para listar Notas de Débito -->
+    <record id="action_debit_notes" model="ir.actions.act_window">
+      <field name="name">Notas de Débito</field>
+      <field name="res_model">account.move</field>
+      <field name="view_mode">list,form</field>
+      <field name="domain" eval="[
+        ('move_type','=','out_refund'),
+        ('journal_id','=', ref('l10n_ve_debit_note.journal_nd_vt'))
+      ]"/>
+      <field name="context" eval="{
+        'default_move_type':'out_refund',
+        'default_journal_id': ref('l10n_ve_debit_note.journal_nd_vt')
+      }"/>
+    </record>
+
+    <!-- 3) Menú bajo Contabilidad -->
+    <menuitem
+      id="menu_debit_note"
+      name="Nota de Débito"
+      parent="account.menu_finance"
+      action="action_debit_notes"
+      sequence="20"/>
+  </data>
+</odoo>

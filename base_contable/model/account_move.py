@@ -74,7 +74,6 @@ class AccountMove(models.Model):
     igtf_ids=fields.One2many('account.payment.fact','move_id', string='Cobros IGTF')
     amount_total_aux = fields.Float(compute='_compute_total_aux')
     observacion = fields.Char()
-    fact_afect = fields.Char()
 
     #show_update_fpos = fields.Boolean(string="Has Fiscal Position Changed", store=False)  
 
@@ -85,11 +84,11 @@ class AccountMove(models.Model):
             if det.tax_ids.aliquot!='exempt':
                 total_imponible=total_imponible+det.price_subtotal
         self.amount_base_imponible=total_imponible
-#aqui
+
     def _compute_exemto(self):
         total_exento=0
         for det in self.invoice_line_ids:
-            if det.tax_ids.aliquot=='exempt' and det.linea_exenta!=True:
+            if det.tax_ids.aliquot=='exempt':
                 total_exento=total_exento+det.price_subtotal
         self.amount_exento=total_exento
 
@@ -246,105 +245,78 @@ class AccountMove(models.Model):
                     #raise UserError(_('xxxxx = %s ')%self)
 
 
-    def concilia_pago(self,payment_id):
-        factor=self.tasa
-        monto=payment_id.amount
-        move_pago_id=payment_id.move_id.id
-        if self.move_type in ('out_invoice','in_receipt','in_refund'):
-            # fact cliente
-            cta_partner=self.partner_id.property_account_receivable_id.id
-        if self.move_type in ('in_invoice','out_receipt','out_refund'):
-            # fact proveedor
-            cta_partner=self.partner_id.property_account_payable_id.id
-        move_line_pago_id=self.env['account.move.line'].search([('move_id','=',move_pago_id),('account_id','=',cta_partner)])
-        move_line_fact_id=self.env['account.move.line'].search([('move_id','=',self.id),('account_id','=',cta_partner)])
-        if self.move_type in ('out_invoice','in_receipt','out_refund'):
-            # fact cliente
-            debit_move_id=move_line_fact_id
-            credit_move_id=move_line_pago_id
-            credit_currency_id=payment_id.currency_id.id
-            debit_currency_id=self.currency_id.id
-            if self.currency_id!=payment_id.currency_id:
-                # si la moneda de pago es diferente a la de la factura
-                if payment_id.currency_id==self.company_id.currency_id:
-                    # si el pago es en bs
-                    monto=monto
-                    monto_d=monto/factor
-                    monto_c=monto
-                if payment_id.currency_id!=self.company_id.currency_id:
-                    # si el pago es en $
-                    monto=payment_id.amount*factor
-                    monto_d=payment_id.amount*factor
-                    monto_c=payment_id.amount
-            if self.currency_id==payment_id.currency_id:
-                # si la moneda de pago es igual a la de la factura
-                if payment_id.currency_id!=self.company_id.currency_id:
-                    # si el pago es en $
-                    monto=payment_id.amount*factor
-                    monto_d=payment_id.amount
-                    monto_c=payment_id.amount
-                if payment_id.currency_id==self.company_id.currency_id:
-                    # si el pago es en Bs
-                    monto=payment_id.amount
-                    monto_d=payment_id.amount
-                    monto_c=payment_id.amount
-        if self.move_type in ('in_invoice','out_receipt','in_refund'):
-            # fact proveedor
-            debit_move_id=move_line_pago_id
-            credit_move_id=move_line_fact_id
-            credit_currency_id=self.currency_id.id
-            debit_currency_id=payment_id.currency_id.id
-            if self.currency_id!=payment_id.currency_id:
-                # si la moneda de pago es diferente a la de la factura
-                if payment_id.currency_id!=self.company_id.currency_id:
-                    # si el pago es en $
-                    monto=payment_id.amount*factor
-                    monto_d=payment_id.amount
-                    monto_c=payment_id.amount*factor
-                if payment_id.currency_id==self.company_id.currency_id:
-                    # si el pago es en bs
-                    monto=monto
-                    monto_d=monto
-                    monto_c=monto/factor
-            if self.currency_id==payment_id.currency_id:
-                # si la moneda de pago es igual a la de la factura
-                if payment_id.currency_id!=self.company_id.currency_id:
-                    # si el pago es en $
-                    monto=payment_id.amount*factor
-                    monto_d=payment_id.amount
-                    monto_c=payment_id.amount
-                if payment_id.currency_id==self.company_id.currency_id:
-                    # si el pago es en Bs
-                    monto=payment_id.amount
-                    monto_d=payment_id.amount
-                    monto_c=payment_id.amount
+    def concilia_pago(self, payment_id):
+        # payment_id: un record de account.payment
+        factor = self.tasa
+        monto = payment_id.amount
+        company = self.env.company
 
-        vals=({
-            'debit_move_id':debit_move_id.id,
-            'credit_move_id':credit_move_id.id,
-            'amount':monto,
-            'debit_amount_currency':monto_d,
-            'credit_amount_currency':monto_c,
-            'credit_currency_id':credit_currency_id,
-            'debit_currency_id':debit_currency_id,
-            })
+        # 1) Determina la cuenta del partner según el tipo de factura
+        if self.move_type in ('out_invoice', 'in_receipt', 'out_refund'):
+            cta_partner = self.partner_id.property_account_receivable_id.id
+        else:
+            cta_partner = self.partner_id.property_account_payable_id.id
+
+        # 2) Busca exclusivamente UNA línea de pago y UNA línea de factura
+        pago_line = self.env['account.move.line'].search([
+            ('move_id', '=', payment_id.move_id.id),
+            ('account_id', '=', cta_partner)
+        ], limit=1)
+        if not pago_line:
+            raise UserError(_('No se encontró la línea de pago para conciliar.'))
+
+        fact_line = self.env['account.move.line'].search([
+            ('move_id', '=', self.id),
+            ('account_id', '=', cta_partner)
+        ], limit=1)
+        if not fact_line:
+            raise UserError(_('No se encontró la línea de factura para conciliar.'))
+
+        # 3) Define qué línea es débito y cuál es crédito
+        if self.move_type in ('in_invoice', 'out_receipt', 'in_refund'):
+            # factura de proveedor: pago = débito, factura = crédito
+            debit_move = pago_line
+            credit_move = fact_line
+            debit_currency = payment_id.currency_id.id
+            credit_currency = self.currency_id.id
+        else:
+            # factura de cliente u otros: factura = débito, pago = crédito
+            debit_move = fact_line
+            credit_move = pago_line
+            debit_currency = self.currency_id.id
+            credit_currency = payment_id.currency_id.id
+
+        # 4) Calcula montos en moneda original y en moneda de factura
+        # (ajusta esto si tu lógica de divisas es más compleja)
+        monto_d = monto if debit_currency == company.currency_id.id else monto / factor
+        monto_c = monto if credit_currency == company.currency_id.id else monto * factor
+
+        # 5) Crea la conciliación parcial
+        vals = {
+            'debit_move_id': debit_move.id,
+            'credit_move_id': credit_move.id,
+            'amount': monto,
+            'debit_amount_currency': monto_d,
+            'credit_amount_currency': monto_c,
+            'debit_currency_id': debit_currency,
+            'credit_currency_id': credit_currency,
+            'max_date': fields.Date.context_today(self),
+        }
         self.env['account.partial.reconcile'].create(vals)
 
 
 
     def button_draft(self):
         super().button_draft()
-
-        if self.env.user.x_llevar_borra_fact=='no' or not self.env.user.x_llevar_borra_fact:
+        if self.env.user.llevar_borra_fact=='no' or not self.env.user.llevar_borra_fact:
             raise UserError(_('Su Usuario no puede llevar esta factura a borrador'))
-        if self.env.user.x_llevar_borra_fact=='si':
+        if self.env.user.llevar_borra_fact=='si':
             if self.igtf_ids:
                 for det in self.igtf_ids.search([('move_id','=',self.id)]):
                     if det.payment_id.state!='draft':
                         det.payment_id.action_draft()
                     det.payment_id.with_context(force_delete=True).unlink()
             busca=self.invoice_line_ids.search([('linea_exenta','=',True),('move_id','=',self.id)])
-            #raise UserError(_('HHHH %s')%busca)
             if busca:
                 busca.unlink()
 

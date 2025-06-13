@@ -1,265 +1,193 @@
-# # -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 from datetime import datetime, timedelta
 
-from odoo import models, fields, api, _, tools
-from odoo.exceptions import UserError, ValidationError
-#import openerp.addons.decimal_precision as dp
-import logging
-
-import io
-from io import BytesIO
-from io import StringIO
-
-import xlsxwriter
-import shutil
+from odoo import models, fields, _
+from odoo.exceptions import UserError
 import base64
-import csv
-
-import urllib.request
-
-import requests
+from io import StringIO
+import logging
 
 _logger = logging.getLogger(__name__)
 
-"""def rif_format(valor):
-    if valor:
-        return valor.replace('-','')
-    return '0'"""
-
 def tipo_format(valor):
-    if valor and valor=='in_refund':
+    if valor and valor == 'in_refund':
         return '03'
     return '01'
 
 def float_format(valor):
     if valor:
-        result = '{:,.2f}'.format(valor)
-        #_logger.info('Result 1: %s' % result)
-        result = result.replace(',','')
-        #_logger.info('Result 2: %s' % result)
-        return result
+        return '{:,.2f}'.format(valor).replace(',', '')
     return valor
 
 def float_format2(valor):
-    #valor=self.base_tax
     if valor:
-        result = '{:,.2f}'.format(valor)
-        #result = result.replace(',','*')
-        #esult = result.replace('.',',')
-        #result = result.replace('*','.')
-        result = result.replace(',','')
-    else:
-        result="0.00"
-    return result
+        return '{:,.2f}'.format(valor).replace(',', '')
+    return "0.00"
 
-def completar_cero(campo,digitos):
-    valor=len(campo)
-    campo=str(campo)
-    nro_ceros=digitos-valor+1
-    for i in range(1,nro_ceros,1):
-        campo=" "+campo
-    return campo
+def completar_cero(campo, digitos):
+    return str(campo).rjust(digitos, ' ')
 
 def formato_periodo(valor):
-        fecha = str(valor)
-        fecha_aux=fecha
-        ano=fecha_aux[0:4]
-        mes=fecha[5:7]
-        dia=fecha[8:10]  
-        resultado=ano+mes
-        return resultado
+    fecha = str(valor)
+    return fecha[0:4] + fecha[5:7]
 
 def rif_format(partner_id):
-    nro_doc = '*****' 
-    tipo_doc='?'
-    if partner_id.vat:
-        nro_doc=partner_id.vat
-        tipo_doc=partner_id.doc_tipo
-    nro_doc=nro_doc.replace('V','')
-    nro_doc=nro_doc.replace('v','')
-    nro_doc=nro_doc.replace('E','')
-    nro_doc=nro_doc.replace('e','')
-    nro_doc=nro_doc.replace('G','')
-    nro_doc=nro_doc.replace('g','')
-    nro_doc=nro_doc.replace('J','')
-    nro_doc=nro_doc.replace('j','')
-    nro_doc=nro_doc.replace('P','')
-    nro_doc=nro_doc.replace('p','')
-    nro_doc=nro_doc.replace('-','')
-    if tipo_doc=="v":
-        tipo_doc="V"
-    if tipo_doc=="e":
-        tipo_doc="E"
-    if tipo_doc=="g":
-        tipo_doc="G"
-    if tipo_doc=="j":
-        tipo_doc="J"
-    if tipo_doc=="p":
-        tipo_doc="P"
-    if tipo_doc=="c":
-        tipo_doc="C"
-    resultado=str(tipo_doc)+str(nro_doc)
-    return resultado
-    #raise UserError(_('cedula: %s')%resultado)
+    """Devuelve el RIF en formato letra+números, sin guiones ni espacios.
+    1) Si el partner tiene doc_tipo válido, lo usamos.
+    2) Si el VAT empieza por letra válida, la usamos y quitamos esa letra de los dígitos.
+    3) En cualquier otro caso, asumimos 'J' por defecto.
+    """
+    raw = (partner_id.vat or '').upper().replace(' ', '').replace('-', '')
+    # 1) doc_tipo
+    tipo = (partner_id.doc_tipo or '').upper()
+    if tipo in ['V', 'E', 'G', 'J', 'P', 'C']:
+        prefix = tipo
+    # 2) vat comienza con letra
+    elif raw and raw[0] in ['V', 'E', 'G', 'J', 'P', 'C']:
+        prefix = raw[0]
+        raw = raw[1:]
+    # 3) fallback
+    else:
+        prefix = 'J'
+
+    # Si raw quedó vacío, devolvemos placeholders
+    if not raw.isdigit():
+        return prefix + '00000000'
+    return prefix + raw
 
 class BsoftContratoReport2(models.TransientModel):
     _name = 'snc.wizard.retencioniva'
     _description = 'Generar archivo TXT de retenciones de IVA'
 
-    delimiter = '\t'
-    quotechar = "'"
-    date_from = fields.Date(string='Fecha de Llegada', default=lambda *a:datetime.now().strftime('%Y-%m-%d'))
-    date_to = fields.Date(string='Fecha de Salida', default=lambda *a:(datetime.now() + timedelta(days=(1))).strftime('%Y-%m-%d'))
-    file_data = fields.Binary('Archivo TXT', filters=None, help="")
-    file_name = fields.Char('txt_generacion.txt', size=256, required=False, help="",)
+    date_from = fields.Date(
+        string='Fecha de Llegada',
+        default=lambda *a: datetime.now().strftime('%Y-%m-%d')
+    )
+    date_to = fields.Date(
+        string='Fecha de Salida',
+        default=lambda *a: (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    )
+    file_data = fields.Binary('Archivo TXT', help="Descarga del TXT generado")
+    file_name = fields.Char(size=256, string='Nombre de archivo')
 
     def show_view(self, name, model, id_xml, res_id=None, view_mode='tree,form', nodestroy=True, target='new'):
-        context = self._context
-        mod_obj = self.env['ir.model.data']
-        view_obj = self.env['ir.ui.view']
-        module = ""
-        view_id = self.env.ref(id_xml).id
-        if view_id:
-            view = view_obj.browse(view_id)
-            view_mode = view.type
-        ctx = context.copy()
+        ctx = dict(self._context or {})
         ctx.update({'active_model': model})
-        res = {'name': name,
-                'view_type': 'form',
-                'view_mode': view_mode,
-                'view_id': view_id,
-                'res_model': model,
-                'res_id': res_id,
-                'nodestroy': nodestroy,
-                'target': target,
-                'type': 'ir.actions.act_window',
-                'context': ctx,
-                }
-        return res
+        return {
+            'name': name,
+            'view_type': 'form',
+            'view_mode': self.env.ref(id_xml).type,
+            'view_id': self.env.ref(id_xml).id,
+            'res_model': model,
+            'res_id': res_id,
+            'nodestroy': nodestroy,
+            'target': target,
+            'type': 'ir.actions.act_window',
+            'context': ctx,
+        }
 
-    
-
-    def conv_div(self,move_id,valor):
-        #raise UserError(_('moneda compañia: %s')%self.company_id.currency_id.id)
-        if move_id.company_id.currency_id.id!=move_id.currency_id.id:
-            tasa= self.env['account.move'].search([('id','=',move_id.id)],order="id asc",limit=1)
-            for det in tasa:
-                valor_aux=det.tasa
-            rate=round(valor_aux,3)  # LANTA
-            #rate=round(valor_aux,2)  # ODOO SH
-            resultado=valor*rate
-        else:
-            resultado=valor
-        return resultado
-
-
+    def conv_div(self, move, valor):
+        if move.company_id.currency_id != move.currency_id:
+            tasa = self.env['account.move'].browse(move.id).tasa
+            rate = round(tasa, 3)
+            return valor * rate
+        return valor
 
     def action_generate_txt(self):
+        # 1) Obtener facturas/receipts retenidas
+        moves = self.env['account.move'].search([
+            ('date', '>=', self.date_from),
+            ('date', '<=', self.date_to),
+            ('move_type', 'in', ('in_invoice', 'in_refund', 'in_receipt')),
+            ('state', '=', 'posted'),
+        ], order='date asc')
 
-        ret_cursor = self.env['account.move'].search([('date','>=',self.date_from),('date','<=',self.date_to),('move_type','in',('in_invoice','in_refund','in_receipt')),('state','=','posted'),],order="date asc")
-        #_logger.info("\n\n\n {} \n\n\n".format(self.rec_cursor))
-        #raise UserError(_(' id retencion:%s')%rec_cursor.vat_ret_id.id) 
+        # 2) Preparamos buffer en memoria
+        buf = StringIO()
 
-        self.file_name = 'txt_generacion.txt'
-        retiva = self.env['vat.retention']
-        retiva = str(retiva.name)
+        # 3) Volcamos cada línea al buffer con lista de 16 campos
+        for move in moves:
+            if not move.vat_ret_id or move.vat_ret_id.state != 'posted':
+                continue
 
-        ruta=self.env.company.x_ruta_txt_iva
-        #ruta="C:/REPOSITORIO/gilda_temp/localizacion_18/txt_iva/wizard/txt_generacion.txt" #ruta local
-        #ruta="/home/odoo/src/txt_generacion.txt" # ruta odoo sh
-        #raise UserError(_('mama = %s')%rec.type)
+            # Tipo de documento SENIAT
+            if move.move_type == 'in_invoice':
+                trans = '01'
+            elif move.move_type == 'in_refund':
+                trans = '03'
+            else:
+                trans = '02'
 
-        with open(ruta, "w") as file:
+            # Acumulados
+            acum_exento = sum(l.base_exenta for l in move.alicuota_line_ids if l.invoice_id == move)
+            base_general = sum(l.base_general for l in move.alicuota_line_ids if l.invoice_id == move)
 
-            for ret in ret_cursor:
-                if ret.vat_ret_id:
-                    if ret.vat_ret_id.state=="posted":
-                        if ret.move_type=="in_invoice":
-                            trans='01'
-                        if ret.move_type=="in_refund":
-                            trans='03'
-                        if ret.move_type=='in_receipt':
-                            trans='02'
+            # Líneas de retención
+            lines = self.env['vat.retention.invoice.line'].search([
+                ('retention_id', '=', move.vat_ret_id.id)
+            ])
+            for rec in lines:
+                if rec.tax_id.aliquot == 'exempt':
+                    continue
 
-                        acum_exemto=base_general=0
-                        
-                        busca_exento = ret.alicuota_line_ids.search([('invoice_id','=',ret.id)])
-                        for det in busca_exento:
-                            acum_exemto=acum_exemto+det.base_exenta
-                            base_general=base_general+det.base_general
+                campos = [
+                    # A: RIF del Agente de Retención
+                    rif_format(move.company_id.partner_id),
+                    # B: Periodo Impositivo (AAAAMM)
+                    formato_periodo(self.date_to),
+                    # C: Fecha de Factura (YYYY-MM-DD)
+                    str(move.date),
+                    # D: Tipo de Operación (C=compras)
+                    'C',
+                    # E: Tipo de documento (01=Factura,02=N. Débito,03=N. Crédito)
+                    trans,
+                    # F: RIF de Proveedor
+                    rif_format(move.partner_id),
+                    # G: Número de Documento
+                    str(move.invoice_number_next),
+                    # H: Número de Control
+                    str(move.invoice_number_control),
+                    # I: Monto total del documento
+                    float_format2(abs(move.amount_total_signed)),
+                    # J: Base Imponible
+                    float_format2(self.conv_div(move, base_general)),
+                    # K: Monto del IVA Retenido
+                    float_format2(move.vat_ret_id.vat_retentioned),
+                    # L: Número del doc. afectado (origen N/D o N/C)
+                    (move.ref or '0'),
+                    # M: Número de Comprobante de Retención
+                    str(move.vat_ret_id.name),
+                    # N: Monto Exento del IVA
+                    float_format2(self.conv_div(move, acum_exento)),
+                    # O: Alícuota (porcentaje)
+                    str(round(rec.tax_id.amount)),
+                    # P: Número de Expediente (0 si no aplica)
+                    '0',
+                ]
+                buf.write("\t".join(campos) + "\n")
 
-                        rec_cursor = self.env['vat.retention.invoice.line'].search([('retention_id','=',ret.vat_ret_id.id)])
-                        for rec in rec_cursor:
+        # 4) Creamos el binary y el nombre de archivo
+        content = buf.getvalue()
+        buf.close()
+        filename = f"Retenciones_IVA_{self.date_from}_a_{self.date_to}.txt"
+        data = base64.b64encode(content.encode('utf-8'))
 
-                            if rec.tax_id.aliquot!="exempt":
-                                rif_compania=rif_format(rec.invoice_id.company_id.partner_id)
-                                file.write(rif_compania + "\t")#1
+        # 5) Asignamos al wizard para descarga
+        self.write({
+            'file_data': data,
+            'file_name': filename,
+        })
 
-                                periodo=formato_periodo(self.date_to)
-                                file.write(periodo + "\t")#2
-
-                                fecha = rec.invoice_id.date
-                                fecha = str(fecha)
-                                file.write(fecha + "\t")#3
-
-                                file.write("C" + "\t")#4
-
-                                file.write(trans + "\t") #5
-
-                                rif_proveedor= rif_format(rec.invoice_id.partner_id)
-                                file.write(rif_proveedor + "\t") #6
-
-                                invoicer_number=str(rec.invoice_id.invoice_number_next)
-                                #invoicer_number=completar_cero(invoicer_number,10)
-                                file.write(invoicer_number + "\t") #7
-
-                                invoice_sequence = str(rec.invoice_id.invoice_number_control)
-                                #invoice_sequence = completar_cero(invoice_sequence,10)
-                                file.write(invoice_sequence + "\t") #8
-
-                                total = str(float_format2(abs(rec.invoice_id.amount_total_signed)))
-                                #total = completar_cero(total,12)
-                                file.write(total + "\t") #9
-
-                                #############################
-
-                                importe_base = str(float_format2(self.conv_div(ret,base_general)))
-                                file.write(importe_base + "\t") #10
-
-                                monto_ret=str(float_format2(ret.vat_ret_id.vat_retentioned)) # PREGUNTAR
-                                file.write(monto_ret + "\t") #11
-
-                                #############################
-                                if rec.invoice_id.ref==False:
-                                    fact_afec='0'
-                                else:
-                                    fact_afec = str(rec.invoice_id.ref)
-                                #fact_afec = completar_cero(fact_afec,5)
-                                file.write(fact_afec + "\t") #12
-
-                                nro_comprobante = str(rec.retention_id.name)
-                                file.write(nro_comprobante + "\t") #13
-
-                                total_exento=acum_exemto
-                                total_exento=str(float_format2(self.conv_div(ret,total_exento)))
-                                file.write(total_exento + "\t")#14
-
-                                porcentage_iva=rec.tax_id.amount
-                                porcentage_iva = str(round(porcentage_iva))
-                                #porcentage_iva = completar_cero(porcentage_iva,5)
-                                file.write(porcentage_iva + "\t") #15 PREGUNTAR"""
-
-                                
-
-                                file.write('0' + "\n") #16
-
-
-
-        #self.write({'file_data': base64.encodestring(open(ruta, "rb").read()),
-                    #'file_name': "Retenciones de IVA desde %s hasta %s.txt"%(self.date_from,self.date_to),
-                    #})
-        self.write({'file_data': base64.encodebytes(open(ruta, "rb").read()),
-                    'file_name': "Retenciones de IVA desde %s hasta %s.txt"%(self.date_from,self.date_to),
-                    })
-
-        return self.show_view('Archivo Generado', self._name, 'txt_iva.snc_wizard_retencioniva_form_view', self.id)
+        # 6) Forzamos la descarga inmediata
+        return {
+            'type': 'ir.actions.act_url',
+            'url': (
+                '/web/content/'
+                '?model=snc.wizard.retencioniva'
+                f'&id={self.id}'
+                '&field=file_data'
+                '&filename_field=file_name'
+                '&download=true'
+            ),
+            'target': 'self',
+        }

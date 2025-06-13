@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="l10n_ve_invoice_flow_view_move_form" model="ir.ui.view">
+    <field name="name">account.move.form.invoice_flow</field>
+    <field name="model">account.move</field>
+    <field name="inherit_id" ref="account.view_move_form"/>
+    <field name="arch" type="xml">
+      <!-- Insertamos 'Pago en Divisas' junto a los campos fiscales -->
+    </field>
+  </record>
+</odoo>

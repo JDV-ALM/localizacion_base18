@@ -9,24 +9,11 @@
         <field name="arch" type="xml">
             <xpath expr="//notebook/page[@name='sales_purchases']" position="after">
                 <page name="retentions" string="Retenciones IVA">
-                    <group name="vat_principal">
-                        <group name="vat_retention2" col="2" string="% Retención para aplicar a este proveedor">
-                            <field name="vat_retention_rate" string="Tasa de retención (%)" invisible="aplicar_ret!=True"/>
-                            <field name="account_ret_payable_id" invisible="aplicar_ret!=True"/>
-                            <field name="aplicar_ret" string="La Compañia del sistema es Contribuyente Especial?"/>
-
-                                              
-                        </group>
-
-                        <group name="vat_retention3" col="2" string="Ctas retenciones para clientes">
-                            
-                            <field name="vat_retention_rate_cli" string="% Retención para aplicar por este cliente" invisible="contribuyente=='no'"/>
-                            <field name="account_ret_receivable_id" invisible="contribuyente=='no'"/>
-                               
-                        </group>
-                        <group name="vat_retention4" col="2" string="Diario de Retencion">
-                            <field name="ret_jrl_id"/>
-                        </group>
+                    <group name="vat_retention2" col="4">
+                        <field name="vat_retention_rate" string="Tasa de retención (%)"/>
+                        <field name="ret_jrl_id"/>
+                        <field name="account_ret_receivable_id"/>
+                        <field name="account_ret_payable_id"/>                   
                     </group>
                 </page>
             </xpath>

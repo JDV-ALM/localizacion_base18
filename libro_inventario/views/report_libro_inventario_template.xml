@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- 1) PaperFormat personalizado -->
+    <record id="paperformat_libro_inv_custom_001" model="report.paperformat">
+        <field name="name">Libro Inv Custom 001</field>
+        <field name="default">False</field>
+        <field name="format"/>
+        <field name="page_width">0</field>
+        <field name="page_height">0</field>
+        <field name="margin_top">60</field>
+        <field name="margin_bottom">10</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_spacing">50</field>
+    </record>
+
+    <!-- 2) Plantilla del Libro de Inventario + RIF bajo el header -->
+    <template id="report_libro_inventario_document">
+        <!-- Llama al layout estándar (incluye logo, dirección, footer) -->
+        <t t-call="web.external_layout">
+            <!-- Preparamos la variable company -->
+            <t t-set="company" t-value="env.company"/>
+
+            <!-- AQUÍ insertamos el RIF justo después del header -->
+            <div style="text-align:left; font-size:12pt; margin:0 0 5px;">
+                <strong>RIF:</strong>
+                <t t-esc="company.vat or ''"/>
+            </div>
+
+            <!-- Cuerpo del reporte -->
+            <main class="page">
+                <style>
+                    @page {
+                        size: 297mm 210mm;
+                        margin-top: 90mm;
+                        margin-right: 10mm;
+                        margin-bottom: 10mm;
+                        margin-left: 10mm;
+                    }
+                    .page { font-size: 9pt; width:100%; }
+                    table.libro-table {
+                        width:100%; border-collapse:collapse; table-layout:fixed;
+                    }
+                    table.libro-table th,
+                    table.libro-table td {
+                        border:1px solid #555; padding:5px; text-align:center;
+                        word-wrap:break-word; word-break:break-all;
+                    }
+                    table.libro-table thead th { background-color:#f0f0f0; }
+                </style>
+
+                <t t-set="doc" t-value="docs and docs[0] or {}"/>
+
+                <h2 style="text-align:center;">LIBRO DE INVENTARIO</h2>
+                <p>
+                  <strong>Desde:</strong> <t t-esc="doc.date_from or ''"/>
+                  &#8195;
+                  <strong>Hasta:</strong> <t t-esc="doc.date_to or ''"/>
+                </p>
+                <br/>
+
+                <table class="libro-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">Código</th>
+                            <th rowspan="2">Unidad</th>
+                            <th rowspan="2">Descripción</th>
+                            <th colspan="3">Inventario Inicial</th>
+                            <th colspan="3">Entradas del Mes</th>
+                            <th colspan="3">Salidas del Mes</th>
+                            <th colspan="3">Inventario Final</th>
+                        </tr>
+                        <tr>
+                            <th>Existencia</th><th>Costo Unit.</th><th>Total Bs.</th>
+                            <th>Cant.</th><th>Costo Unit.</th><th>Total Bs.</th>
+                            <th>Cant.</th><th>Costo Unit.</th><th>Total Bs.</th>
+                            <th>Stock</th><th>Costo Prom.</th><th>Total Bs.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr t-foreach="doc.line_ids" t-as="l">
+                            <td><t t-esc="l.code"/></td>
+                            <td><t t-esc="l.unit"/></td>
+                            <td><t t-esc="l.description"/></td>
+                            <td><t t-esc="l.initial_qty"/></td>
+                            <td><t t-esc="l.initial_cost"/> Bs</td>
+                            <td><t t-esc="l.initial_total"/> Bs</td>
+                            <td><t t-esc="l.entries"/></td>
+                            <td><t t-esc="l.entries_cost_unit"/> Bs</td>
+                            <td><t t-esc="l.entries_total"/> Bs</td>
+                            <td><t t-esc="l.exits"/></td>
+                            <td><t t-esc="l.exits_cost_unit"/> Bs</td>
+                            <td><t t-esc="l.exits_total"/> Bs</td>
+                            <td><t t-esc="l.final_stock"/></td>
+                            <td><t t-esc="l.average_cost"/> Bs</td>
+                            <td><t t-esc="l.final_total"/> Bs</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </main>
+        </t>
+    </template>
+
+    <!-- 3) Acción que dispara el QWeb -->
+    <record id="report_libro_inventario_action" model="ir.actions.report">
+        <field name="name">Libro de Inventario</field>
+        <field name="model">libro.inventario.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">libro_inventario.report_libro_inventario_document</field>
+        <field name="print_report_name">
+            object.date_from and ('Libro de Inventario - ' + object.date_from.strftime('%Y-%m-%d')) or 'Libro de Inventario'
+        </field>
+        <field name="paperformat_id" ref="libro_inventario.paperformat_libro_inv_custom_001"/>
+    </record>
+
+</odoo>

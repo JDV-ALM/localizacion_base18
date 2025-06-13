@@ -38,24 +38,13 @@
               <!-- cabecera 1 -->
                 <table width="100%" class="table table-borderless">
                     <tr>
-                      <td >&amp;nbsp;&amp;nbsp;</td>
-                      <t t-if="docs.move_type == 'out_invoice'">
-                        <td width="250"><strong>&amp;nbsp;&amp;nbsp;Nro Factura:</strong><span t-esc="docs.name"/></td>
-                      </t>
-                      <t t-if="docs.move_type == 'out_refund'">
-                        <td width="250"><strong>&amp;nbsp;&amp;nbsp;Nro Nota de Crédito:</strong><span t-esc="docs.name"/></td>
-                      </t>
-                      <t t-if="docs.move_type == 'out_receipt'">
-                        <td width="250"><strong>&amp;nbsp;&amp;nbsp;Nro Nota de Débito:</strong><span t-esc="docs.name"/></td>
-                      </t>
-                    </tr>
-                    <tr>
-                      <td>&amp;nbsp;&amp;nbsp;</td>
-                      <td >&amp;nbsp;&amp;nbsp;Fecha:<span t-field="docs.invoice_date"/></td>
+                      <td colspan="2">&#160;&#160;Fecha:<span t-field="docs.invoice_date"/><br/>
+                      &#160;&#160;Hora:<span t-field="docs.hora_public"/>
+                      </td>
                     </tr>
                 </table>
                   
-              <br/><br/><br/>
+              <br/>
                   <!-- cabecera 2 -->
                   <table width="100%" class="table table-borderless">
                     <tr>
@@ -79,10 +68,10 @@
                   <table width="100%" class="table table-sm table-bordered">
                     <thead>
                       <tr style="background-color:#CCCCCC" align="center">
-                        <td>Descripción</td>
+                        <td>Código</td>
                         <td>Precio <br/> Unitario Bs.</td>
                         <td>Cantidad</td>
-                        <td>Alic.<br/>%</td>
+                        <td>IVA<br/>%</td>
                         <td>Monto <br/>Total Bs.</td>
                       </tr>
                     </thead>

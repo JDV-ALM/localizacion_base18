@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <!-- Heredamos la plantilla que realmente genera el PDF -->
+  <template
+    id="l10n_ve_report_delivery_document_inherit"
+    inherit_id="stock.report_delivery_document">
+    <!-- Reemplazamos únicamente el span dentro del <h2> que imprime o.name -->
+    <xpath expr="//h2/span[@t-field='o.name']" position="replace">
+      <span>
+        GUÍA DE DESPACHO N° <t t-esc="o.name.split('/')[-1]"/>
+      </span>
+    </xpath>
+  </template>
+</odoo>
