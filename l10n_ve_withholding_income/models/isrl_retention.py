@@ -3,9 +3,12 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
-class Account_move(models.Model):
-    _inherit = 'account_move'
+class Isrl_retention(models.Model):
+    _inherit = 'isrl_retention'
     
+    name = fields.Char(string='Name')
+    partner_id = fields.Char(string='Partner Id')
+    date = fields.Char(string='Date')
 
     # TODO: Migrar métodos específicos desde base_contable
     # TODO: Agregar validaciones específicas de VE

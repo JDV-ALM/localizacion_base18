@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Vistas para Venezuela - Numeración de Facturas -->
+    
+    <!-- TODO: Agregar vistas específicas del módulo -->
+    <!-- Ejemplo: -->
+    <!--
+    <record id="l10n_ve_invoice_sequence_view_form" model="ir.ui.view">
+        <field name="name">account.move.form.invoice_sequence</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_move_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='ref']" position="after">
+                <!-- Agregar campos específicos aquí -->
+            </xpath>
+        </field>
+    </record>
+    -->
+    
+</odoo>

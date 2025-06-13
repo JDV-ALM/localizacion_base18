@@ -3,8 +3,8 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
-class Account_move(models.Model):
-    _inherit = 'account_move'
+class Ir_sequence(models.Model):
+    _inherit = 'ir_sequence'
     
 
     # TODO: Migrar métodos específicos desde base_contable

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Venezuela - IGTF',
+    'name': 'Venezuela - Retenciones ISLR',
     'version': '18.0.1.0.0',
     'category': 'Localization/Account',
-    'summary': 'Impuesto a las Grandes Transacciones Financieras',
+    'summary': 'Retenciones de Impuesto Sobre la Renta',
     'description': """
-Impuesto a las Grandes Transacciones Financieras
+Retenciones de Impuesto Sobre la Renta
 
 Este módulo es parte de la refactorización de la localización venezolana,
 separando responsabilidades para mejor mantenibilidad.
@@ -16,7 +16,7 @@ separando responsabilidades para mejor mantenibilidad.
     'depends': ['l10n_ve_base'],
     'data': [
         'security/ir.model.access.csv',
-        'views/l10n_ve_igtf_views.xml',
+        'views/l10n_ve_withholding_income_views.xml',
     ],
     'installable': True,
     'application': false,

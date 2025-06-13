@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 {
-    'name': 'Venezuela - IGTF',
+    'name': 'Venezuela - Retenciones IVA',
     'version': '18.0.1.0.0',
     'category': 'Localization/Account',
-    'summary': 'Impuesto a las Grandes Transacciones Financieras',
+    'summary': 'Comprobantes de retención de IVA',
     'description': """
-Impuesto a las Grandes Transacciones Financieras
+Comprobantes de retención de IVA
 
 Este módulo es parte de la refactorización de la localización venezolana,
 separando responsabilidades para mejor mantenibilidad.
@@ -16,7 +16,7 @@ separando responsabilidades para mejor mantenibilidad.
     'depends': ['l10n_ve_base'],
     'data': [
         'security/ir.model.access.csv',
-        'views/l10n_ve_igtf_views.xml',
+        'views/l10n_ve_withholding_vat_views.xml',
     ],
     'installable': True,
     'application': false,

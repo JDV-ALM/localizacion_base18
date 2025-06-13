@@ -3,8 +3,8 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError, ValidationError
 
-class Account_move(models.Model):
-    _inherit = 'account_move'
+class Res_partner(models.Model):
+    _inherit = 'res_partner'
     
 
     # TODO: Migrar métodos específicos desde base_contable
