@@ -1,326 +1,320 @@
 # -*- coding: utf-8 -*-
 
 from odoo import models, fields, api, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
+import re
 
 
-class SaleOrder(models.Model):
-    _inherit = 'sale.order'
+class AccountMove(models.Model):
+    _inherit = 'account.move'
 
-    # Venezuelan sale order fields
+    # Venezuelan document fields
+    nro_control = fields.Char(
+        string='Número de Control',
+        help='Número de control de la factura según normativa venezolana'
+    )
+    tipo_documento = fields.Selection([
+        ('01', 'Factura'),
+        ('02', 'Nota de Débito'),
+        ('03', 'Nota de Crédito'),
+        ('04', 'Factura de Exportación'),
+        ('05', 'Comprobante de Retención'),
+        ('06', 'Comprobante de No Retención'),
+    ], string='Tipo de Documento', default='01')
+    
+    # Withholding fields
+    wh_vat = fields.Boolean(
+        string='Aplica Retención IVA',
+        compute='_compute_withholdings',
+        store=True
+    )
+    wh_vat_amount = fields.Monetary(
+        string='Monto Retención IVA',
+        currency_field='currency_id'
+    )
+    wh_vat_rate = fields.Float(
+        string='Tasa Retención IVA (%)',
+        default=75.0
+    )
+    
+    wh_islr = fields.Boolean(
+        string='Aplica Retención ISLR',
+        compute='_compute_withholdings',
+        store=True
+    )
+    wh_islr_amount = fields.Monetary(
+        string='Monto Retención ISLR',
+        currency_field='currency_id'
+    )
+    wh_islr_rate = fields.Float(
+        string='Tasa Retención ISLR (%)',
+        default=3.0
+    )
+    
+    wh_municipal = fields.Boolean(
+        string='Aplica Retención Municipal',
+        compute='_compute_withholdings',
+        store=True
+    )
+    wh_municipal_amount = fields.Monetary(
+        string='Monto Retención Municipal',
+        currency_field='currency_id'
+    )
+    wh_municipal_rate = fields.Float(
+        string='Tasa Retención Municipal (%)',
+        default=1.0
+    )
+    
+    # IGTF fields
+    igtf_amount = fields.Monetary(
+        string='Monto IGTF',
+        currency_field='currency_id',
+        help='Impuesto a las Grandes Transacciones Financieras'
+    )
+    igtf_rate = fields.Float(
+        string='Tasa IGTF (%)',
+        default=3.0
+    )
+    applies_igtf = fields.Boolean(
+        string='Aplica IGTF',
+        compute='_compute_applies_igtf',
+        store=True
+    )
+    
+    # Venezuelan currency fields
+    currency_rate_date = fields.Date(
+        string='Fecha Tasa de Cambio',
+        help='Fecha de la tasa de cambio utilizada'
+    )
+    currency_rate_used = fields.Float(
+        string='Tasa de Cambio Utilizada',
+        digits=(12, 6),
+        help='Tasa de cambio utilizada en la transacción'
+    )
+    
+    # Payment methods for invoices
+    payment_method_ids = fields.Many2many(
+        'modo.pago',
+        string='Métodos de Pago',
+        help='Métodos de pago utilizados en esta factura'
+    )
+    
+    # Supplier invoice fields
+    supplier_invoice_number = fields.Char(
+        string='Número Factura Proveedor',
+        help='Número de factura del proveedor'
+    )
+    supplier_control_number = fields.Char(
+        string='Número Control Proveedor',
+        help='Número de control del proveedor'
+    )
+    
+    # Sales specific fields
     fiscal_position_ve = fields.Selection([
         ('national', 'Venta Nacional'),
         ('export', 'Exportación'),
         ('free_zone', 'Zona Franca'),
         ('duty_free', 'Duty Free'),
-    ], string='Posición Fiscal Venezolana', default='national')
+    ], string='Posición Fiscal Venezolana')
     
-    # Export information
-    is_export_sale = fields.Boolean(
-        string='Venta de Exportación',
-        help='Indica si es una venta de exportación'
-    )
-    export_permit_number = fields.Char(
-        string='Número de Permiso de Exportación',
-        help='Número del permiso de exportación'
-    )
-    incoterm_ve = fields.Selection([
-        ('EXW', 'Ex Works'),
-        ('FCA', 'Free Carrier'),
-        ('CPT', 'Carriage Paid To'),
-        ('CIP', 'Carriage and Insurance Paid'),
-        ('DAP', 'Delivered at Place'),
-        ('DPU', 'Delivered at Place Unloaded'),
-        ('DDP', 'Delivered Duty Paid'),
-        ('FAS', 'Free Alongside Ship'),
-        ('FOB', 'Free on Board'),
-        ('CFR', 'Cost and Freight'),
-        ('CIF', 'Cost, Insurance and Freight'),
-    ], string='Incoterm')
-    
-    # Payment methods
-    payment_method_ids = fields.Many2many(
-        'modo.pago',
-        string='Métodos de Pago',
-        help='Métodos de pago aceptados para esta venta'
-    )
-    
-    # IGTF configuration
-    applies_igtf = fields.Boolean(
-        string='Aplica IGTF',
-        compute='_compute_applies_igtf',
-        store=True,
-        help='Indica si esta venta aplica IGTF'
-    )
-    igtf_amount = fields.Monetary(
-        string='Monto IGTF',
-        compute='_compute_igtf_amount',
-        store=True,
-        currency_field='currency_id',
-        help='Monto del IGTF aplicable'
-    )
-    igtf_rate = fields.Float(
-        string='Tasa IGTF (%)',
-        default=3.0,
-        help='Porcentaje de IGTF'
-    )
-    
-    # Venezuelan currency fields
-    currency_rate_sale = fields.Float(
-        string='Tasa de Cambio Venta',
-        digits=(12, 6),
-        help='Tasa de cambio utilizada en la venta'
-    )
-    amount_total_ves = fields.Monetary(
-        string='Total en Bolívares',
-        compute='_compute_amount_total_ves',
-        store=True,
-        help='Total de la venta en bolívares'
-    )
-    
-    # Price list in multiple currencies
-    show_prices_usd = fields.Boolean(
-        string='Mostrar Precios en USD',
-        help='Mostrar precios en dólares estadounidenses'
-    )
-    show_prices_eur = fields.Boolean(
-        string='Mostrar Precios en EUR',
-        help='Mostrar precios en euros'
-    )
-    
-    # Fiscal printer configuration
     use_fiscal_printer = fields.Boolean(
-        string='Usar Impresora Fiscal',
-        help='Esta venta utilizará impresora fiscal'
+        string='Usar Impresora Fiscal'
+    )
+    
+    # Fiscal printing fields
+    fiscal_printer = fields.Boolean(
+        string='Impresora Fiscal',
+        help='Documento generado por impresora fiscal'
     )
     fiscal_printer_serial = fields.Char(
         string='Serial Impresora Fiscal'
     )
     
-    @api.depends('payment_method_ids')
+    @api.depends('partner_id', 'move_type', 'company_id')
+    def _compute_withholdings(self):
+        """Compute if withholdings apply based on partner and company settings"""
+        for move in self:
+            if move.partner_id and move.move_type in ('out_invoice', 'in_invoice'):
+                # Check if company is withholding agent
+                company = move.company_id
+                partner = move.partner_id
+                
+                # IVA withholding
+                move.wh_vat = (
+                    company.wh_vat_agent and 
+                    move.move_type == 'out_invoice' and
+                    move.amount_total >= 10000  # Minimum threshold
+                )
+                
+                # ISLR withholding
+                move.wh_islr = (
+                    company.wh_income_agent and
+                    move.move_type == 'out_invoice' and
+                    move.amount_total >= 3000  # Minimum threshold
+                )
+                
+                # Municipal withholding
+                move.wh_municipal = (
+                    company.wh_municipal_agent and
+                    move.move_type == 'out_invoice' and
+                    move.amount_total >= 1000  # Minimum threshold
+                )
+            else:
+                move.wh_vat = False
+                move.wh_islr = False
+                move.wh_municipal = False
+    
+    @api.depends('journal_id', 'payment_method_ids')
     def _compute_applies_igtf(self):
-        """Compute if IGTF applies based on payment methods"""
-        for order in self:
-            order.applies_igtf = any(
-                method.applies_igtf for method in order.payment_method_ids
-            )
+        """Compute if IGTF applies based on payment method"""
+        for move in self:
+            # IGTF applies to electronic payments or when payment methods that apply IGTF are used
+            move.applies_igtf = False
+            if move.payment_method_ids:
+                move.applies_igtf = any(method.applies_igtf for method in move.payment_method_ids)
+            elif move.journal_id and move.journal_id.type == 'bank':
+                move.applies_igtf = move.journal_id.applies_igtf
     
-    @api.depends('amount_total', 'applies_igtf', 'igtf_rate')
-    def _compute_igtf_amount(self):
-        """Compute IGTF amount"""
-        for order in self:
-            if order.applies_igtf:
-                order.igtf_amount = order.amount_total * (order.igtf_rate / 100)
-            else:
-                order.igtf_amount = 0.0
+    @api.constrains('nro_control')
+    def _check_nro_control_format(self):
+        """Validate control number format"""
+        for move in self:
+            if move.nro_control:
+                # Venezuelan control number format: 8 digits
+                if not re.match(r'^\d{8}$', move.nro_control):
+                    raise ValidationError(_(
+                        'El número de control debe tener exactamente 8 dígitos'
+                    ))
     
-    @api.depends('amount_total', 'currency_rate_sale', 'currency_id')
-    def _compute_amount_total_ves(self):
-        """Compute total amount in Venezuelan bolívars"""
-        for order in self:
-            if order.currency_id.name != 'VES':
-                if order.currency_rate_sale:
-                    order.amount_total_ves = order.amount_total * order.currency_rate_sale
-                else:
-                    # Get current exchange rate
-                    ves_currency = self.env['res.currency'].search([('name', '=', 'VES')], limit=1)
-                    if ves_currency:
-                        rate = order.currency_id._get_conversion_rate(
-                            order.currency_id,
-                            ves_currency,
-                            order.company_id,
-                            order.date_order
-                        )
-                        order.amount_total_ves = order.amount_total * rate
-                    else:
-                        order.amount_total_ves = order.amount_total
-            else:
-                order.amount_total_ves = order.amount_total
+    @api.onchange('wh_vat', 'amount_total', 'wh_vat_rate')
+    def _onchange_wh_vat(self):
+        """Calculate IVA withholding amount"""
+        if self.wh_vat and self.amount_total:
+            # Calculate VAT base (excluding VAT)
+            vat_base = self.amount_untaxed
+            # Apply withholding rate to VAT amount
+            vat_amount = self.amount_total - self.amount_untaxed
+            self.wh_vat_amount = vat_amount * (self.wh_vat_rate / 100)
     
-    @api.onchange('currency_id', 'date_order')
-    def _onchange_currency_rate_sale(self):
-        """Update currency rate when currency or date changes"""
-        if self.currency_id and self.currency_id.name != 'VES':
-            ves_currency = self.env['res.currency'].search([('name', '=', 'VES')], limit=1)
-            if ves_currency:
-                self.currency_rate_sale = self.currency_id._get_conversion_rate(
-                    self.currency_id,
-                    ves_currency,
-                    self.company_id,
-                    self.date_order
-                )
+    @api.onchange('wh_islr', 'amount_untaxed', 'wh_islr_rate')
+    def _onchange_wh_islr(self):
+        """Calculate ISLR withholding amount"""
+        if self.wh_islr and self.amount_untaxed:
+            self.wh_islr_amount = self.amount_untaxed * (self.wh_islr_rate / 100)
     
-    @api.onchange('fiscal_position_ve')
-    def _onchange_fiscal_position_ve(self):
-        """Update fields based on fiscal position"""
-        if self.fiscal_position_ve == 'export':
-            self.is_export_sale = True
-            # Export sales typically don't have VAT
-            vat_exempt_fpos = self.env['account.fiscal.position'].search([
-                ('name', 'ilike', 'export'),
-                ('company_id', '=', self.company_id.id)
-            ], limit=1)
-            if vat_exempt_fpos:
-                self.fiscal_position_id = vat_exempt_fpos.id
-        else:
-            self.is_export_sale = False
+    @api.onchange('wh_municipal', 'amount_untaxed', 'wh_municipal_rate')
+    def _onchange_wh_municipal(self):
+        """Calculate municipal withholding amount"""
+        if self.wh_municipal and self.amount_untaxed:
+            self.wh_municipal_amount = self.amount_untaxed * (self.wh_municipal_rate / 100)
     
-    def action_confirm(self):
+    @api.onchange('applies_igtf', 'amount_total', 'igtf_rate')
+    def _onchange_igtf(self):
+        """Calculate IGTF amount"""
+        if self.applies_igtf and self.amount_total:
+            self.igtf_amount = self.amount_total * (self.igtf_rate / 100)
+    
+    def _get_currency_rate(self):
+        """Get current currency rate for Venezuelan bolívars"""
+        self.ensure_one()
+        if self.currency_id.name == 'VES':
+            return 1.0
+        
+        # Get rate from currency rate model
+        rate = self.currency_id._get_conversion_rate(
+            self.currency_id,
+            self.company_id.currency_id,
+            self.company_id,
+            self.date or fields.Date.today()
+        )
+        return rate
+    
+    def action_post(self):
         """Override to add Venezuelan validations"""
-        # Validate export information
-        for order in self:
-            if order.is_export_sale and not order.export_permit_number:
-                raise ValidationError(_(
-                    'Las ventas de exportación requieren número de permiso de exportación'
-                ))
+        # Validate control number uniqueness
+        for move in self:
+            if move.nro_control and move.move_type in ('out_invoice', 'out_refund'):
+                existing = self.search([
+                    ('nro_control', '=', move.nro_control),
+                    ('company_id', '=', move.company_id.id),
+                    ('id', '!=', move.id),
+                    ('state', '=', 'posted')
+                ])
+                if existing:
+                    raise ValidationError(_(
+                        'Ya existe una factura con el número de control %s'
+                    ) % move.nro_control)
         
-        # Set currency rate if not set
-        for order in self:
-            if not order.currency_rate_sale and order.currency_id.name != 'VES':
-                order._onchange_currency_rate_sale()
+        # Set currency rate
+        for move in self:
+            if not move.currency_rate_used:
+                move.currency_rate_used = move._get_currency_rate()
+                move.currency_rate_date = move.date
         
-        return super().action_confirm()
+        return super().action_post()
     
-    def _prepare_invoice(self):
-        """Override to include Venezuelan invoice data"""
-        invoice_vals = super()._prepare_invoice()
-        
-        # Add Venezuelan fields to invoice
-        invoice_vals.update({
-            'fiscal_position_ve': self.fiscal_position_ve,
-            'is_export_sale': self.is_export_sale,
-            'export_permit_number': self.export_permit_number,
-            'payment_method_ids': [(6, 0, self.payment_method_ids.ids)],
-            'applies_igtf': self.applies_igtf,
-            'igtf_amount': self.igtf_amount,
-            'igtf_rate': self.igtf_rate,
-            'currency_rate_used': self.currency_rate_sale,
-            'currency_rate_date': self.date_order,
-            'use_fiscal_printer': self.use_fiscal_printer,
-            'fiscal_printer_serial': self.fiscal_printer_serial,
-        })
-        
-        return invoice_vals
-    
-    def get_venezuelan_sale_info(self):
-        """Get Venezuelan sale information for reports"""
+    def get_venezuelan_taxes_summary(self):
+        """Get summary of Venezuelan taxes for reports"""
         self.ensure_one()
-        return {
-            'fiscal_position': self.fiscal_position_ve,
-            'is_export': self.is_export_sale,
-            'export_permit': self.export_permit_number or '',
-            'incoterm': self.incoterm_ve or '',
-            'payment_methods': [method.name for method in self.payment_method_ids],
-            'applies_igtf': self.applies_igtf,
-            'igtf_amount': self.igtf_amount,
-            'currency_rate': self.currency_rate_sale,
-            'amount_ves': self.amount_total_ves,
-            'use_fiscal_printer': self.use_fiscal_printer,
-        }
-    
-    def get_prices_in_currencies(self):
-        """Get order prices in different currencies"""
-        self.ensure_one()
-        currencies_info = {
-            'VES': self.amount_total_ves,
+        
+        tax_summary = {
+            'base_amount': self.amount_untaxed,
+            'vat_amount': self.amount_total - self.amount_untaxed,
+            'total_amount': self.amount_total,
+            'withholdings': {
+                'vat': self.wh_vat_amount if self.wh_vat else 0,
+                'islr': self.wh_islr_amount if self.wh_islr else 0,
+                'municipal': self.wh_municipal_amount if self.wh_municipal else 0,
+            },
+            'igtf': self.igtf_amount if self.applies_igtf else 0,
         }
         
-        # Get USD price
-        usd_currency = self.env['res.currency'].search([('name', '=', 'USD')], limit=1)
-        if usd_currency:
-            if self.currency_id == usd_currency:
-                currencies_info['USD'] = self.amount_total
-            else:
-                rate = self.currency_id._get_conversion_rate(
-                    self.currency_id,
-                    usd_currency,
-                    self.company_id,
-                    self.date_order
-                )
-                currencies_info['USD'] = self.amount_total * rate
-        
-        # Get EUR price
-        eur_currency = self.env['res.currency'].search([('name', '=', 'EUR')], limit=1)
-        if eur_currency:
-            if self.currency_id == eur_currency:
-                currencies_info['EUR'] = self.amount_total
-            else:
-                rate = self.currency_id._get_conversion_rate(
-                    self.currency_id,
-                    eur_currency,
-                    self.company_id,
-                    self.date_order
-                )
-                currencies_info['EUR'] = self.amount_total * rate
-        
-        return currencies_info
+        return tax_summary
+    
+    def _get_tax_lines_for_report(self):
+        """Get tax lines formatted for Venezuelan reports"""
+        tax_lines = []
+        for line in self.line_ids.filtered(lambda l: l.tax_line_id):
+            tax_lines.append({
+                'tax_name': line.tax_line_id.name,
+                'tax_amount': line.credit or line.debit,
+                'tax_rate': line.tax_line_id.amount,
+                'base_amount': abs(line.tax_base_amount),
+            })
+        return tax_lines
+    
+    def get_payment_methods_info(self):
+        """Get information about payment methods used"""
+        self.ensure_one()
+        methods_info = []
+        for method in self.payment_method_ids:
+            methods_info.append(method.get_payment_info())
+        return methods_info
 
 
-class SaleOrderLine(models.Model):
-    _inherit = 'sale.order.line'
+class AccountMoveLine(models.Model):
+    _inherit = 'account.move.line'
 
-    # Venezuelan sale line fields
-    seniat_code = fields.Char(
-        related='product_id.seniat_code',
-        string='Código SENIAT',
-        readonly=True
+    # Venezuelan specific fields for move lines
+    wh_vat_line = fields.Boolean(
+        string='Línea de Retención IVA',
+        help='Indica si esta línea corresponde a retención de IVA'
+    )
+    wh_islr_line = fields.Boolean(
+        string='Línea de Retención ISLR',
+        help='Indica si esta línea corresponde a retención de ISLR'
+    )
+    wh_municipal_line = fields.Boolean(
+        string='Línea de Retención Municipal',
+        help='Indica si esta línea corresponde a retención municipal'
     )
     
-    # Price in multiple currencies
-    price_unit_usd = fields.Float(
-        string='Precio Unit. USD',
-        digits='Product Price',
-        compute='_compute_price_unit_usd',
-        help='Precio unitario en dólares estadounidenses'
+    # Unit cost in foreign currency
+    price_unit_foreign = fields.Float(
+        string='Precio Unitario (Moneda Extranjera)',
+        digits='Product Price'
     )
-    price_unit_eur = fields.Float(
-        string='Precio Unit. EUR',
-        digits='Product Price',
-        compute='_compute_price_unit_eur',
-        help='Precio unitario en euros'
+    foreign_currency_id = fields.Many2one(
+        'res.currency',
+        string='Moneda Extranjera'
     )
-    
-    # Tax exemption information
-    tax_exempt_reason = fields.Selection(
-        related='product_id.tax_exempt_reason',
-        string='Motivo Exención',
-        readonly=True
-    )
-    
-    @api.depends('price_unit', 'order_id.currency_id')
-    def _compute_price_unit_usd(self):
-        """Compute unit price in USD"""
-        for line in self:
-            usd_currency = self.env['res.currency'].search([('name', '=', 'USD')], limit=1)
-            if usd_currency and line.order_id.currency_id:
-                if line.order_id.currency_id == usd_currency:
-                    line.price_unit_usd = line.price_unit
-                else:
-                    rate = line.order_id.currency_id._get_conversion_rate(
-                        line.order_id.currency_id,
-                        usd_currency,
-                        line.order_id.company_id,
-                        line.order_id.date_order
-                    )
-                    line.price_unit_usd = line.price_unit * rate
-            else:
-                line.price_unit_usd = 0.0
-    
-    @api.depends('price_unit', 'order_id.currency_id')
-    def _compute_price_unit_eur(self):
-        """Compute unit price in EUR"""
-        for line in self:
-            eur_currency = self.env['res.currency'].search([('name', '=', 'EUR')], limit=1)
-            if eur_currency and line.order_id.currency_id:
-                if line.order_id.currency_id == eur_currency:
-                    line.price_unit_eur = line.price_unit
-                else:
-                    rate = line.order_id.currency_id._get_conversion_rate(
-                        line.order_id.currency_id,
-                        eur_currency,
-                        line.order_id.company_id,
-                        line.order_id.date_order
-                    )
-                    line.price_unit_eur = line.price_unit * rate
-            else:
-                line.price_unit_eur = 0.0

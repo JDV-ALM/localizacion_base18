@@ -92,6 +92,35 @@ class AccountMove(models.Model):
         help='Tasa de cambio utilizada en la transacción'
     )
     
+    # Payment methods for invoices
+    payment_method_ids = fields.Many2many(
+        'modo.pago',
+        string='Métodos de Pago',
+        help='Métodos de pago utilizados en esta factura'
+    )
+    
+    # Supplier invoice fields
+    supplier_invoice_number = fields.Char(
+        string='Número Factura Proveedor',
+        help='Número de factura del proveedor'
+    )
+    supplier_control_number = fields.Char(
+        string='Número Control Proveedor',
+        help='Número de control del proveedor'
+    )
+    
+    # Sales specific fields
+    fiscal_position_ve = fields.Selection([
+        ('national', 'Venta Nacional'),
+        ('export', 'Exportación'),
+        ('free_zone', 'Zona Franca'),
+        ('duty_free', 'Duty Free'),
+    ], string='Posición Fiscal Venezolana')
+    
+    use_fiscal_printer = fields.Boolean(
+        string='Usar Impresora Fiscal'
+    )
+    
     # Fiscal printing fields
     fiscal_printer = fields.Boolean(
         string='Impresora Fiscal',
@@ -135,16 +164,16 @@ class AccountMove(models.Model):
                 move.wh_islr = False
                 move.wh_municipal = False
     
-    @api.depends('journal_id', 'payment_mode')
+    @api.depends('journal_id', 'payment_method_ids')
     def _compute_applies_igtf(self):
         """Compute if IGTF applies based on payment method"""
         for move in self:
-            # IGTF applies to electronic payments
-            move.applies_igtf = (
-                move.journal_id.type == 'bank' and
-                hasattr(move, 'payment_mode') and
-                move.payment_mode in ('electronic', 'transfer')
-            )
+            # IGTF applies to electronic payments or when payment methods that apply IGTF are used
+            move.applies_igtf = False
+            if move.payment_method_ids:
+                move.applies_igtf = any(method.applies_igtf for method in move.payment_method_ids)
+            elif move.journal_id and move.journal_id.type == 'bank':
+                move.applies_igtf = move.journal_id.applies_igtf
     
     @api.constrains('nro_control')
     def _check_nro_control_format(self):
@@ -253,6 +282,14 @@ class AccountMove(models.Model):
                 'base_amount': abs(line.tax_base_amount),
             })
         return tax_lines
+    
+    def get_payment_methods_info(self):
+        """Get information about payment methods used"""
+        self.ensure_one()
+        methods_info = []
+        for method in self.payment_method_ids:
+            methods_info.append(method.get_payment_info())
+        return methods_info
 
 
 class AccountMoveLine(models.Model):

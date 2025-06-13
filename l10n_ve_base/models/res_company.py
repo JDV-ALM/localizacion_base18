@@ -47,6 +47,23 @@ class ResCompany(models.Model):
         help='Impuesto a las Grandes Transacciones Financieras'
     )
     
+    # Withholding accounts
+    account_wh_vat_id = fields.Many2one(
+        'account.account',
+        string='Cuenta Retención IVA',
+        help='Cuenta contable para retenciones de IVA'
+    )
+    account_wh_islr_id = fields.Many2one(
+        'account.account',
+        string='Cuenta Retención ISLR',
+        help='Cuenta contable para retenciones de ISLR'
+    )
+    account_wh_municipal_id = fields.Many2one(
+        'account.account',
+        string='Cuenta Retención Municipal',
+        help='Cuenta contable para retenciones municipales'
+    )
+    
     # Venezuelan localization settings
     seniat_url = fields.Char(
         string='URL SENIAT',
